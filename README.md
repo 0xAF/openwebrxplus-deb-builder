@@ -1,6 +1,7 @@
 # openwebrxplus-deb-builder
 DEB packages builder for OpenWebRX+  
 Build .deb packages for [OpenWebRX+](https://github.com/luarvique/openwebrx) and it's dependencies using Docker/Podman.  
+To use this repo, you need `make` package installed.  
 To build arm platforms, you need `qemu-user-static` package instaled.
 
 ## usage
@@ -21,6 +22,7 @@ It will use my prepared builder from docker hub.
 ```sh
 make build
 ```
+then you will find your .deb packages in `./owrx/<distro>/<release>/<arch>` folder.
 
 ## create builder image for selected platforms in settings
 To create your builder image:
