@@ -18,12 +18,14 @@ make settings
 ```
 
 ## building DEB packages for selected platforms
-If you want to build DEB packages only, this should be enough.
-It will use my prepared builder from docker hub.
+If you want to build DEB packages, this should be enough.
 ```sh
 make build
 ```
-then you will find your .deb packages in `./owrx/<distro>/<release>/<arch>` folder.
+Then you will find your .deb packages in `./owrx/<distro>/<release>/<arch>` folder.
+
+This will use my prepared builders from docker hub and will build the debs for all distro/release/arch combination i've prepared. (The `Dockerfile-*` shows which distro/release combinations are supported).
+Default architectures are AMD64(X86_64), ARM64, ARMv7(ARMHF). If you want to disable some architectures, use `make settings`.
 
 ## create builder image for selected platforms in settings
 To create your builder image:
