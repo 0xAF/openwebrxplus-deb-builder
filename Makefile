@@ -132,12 +132,36 @@ define create_podman_builders
 		buildah manifest push --all \
 			$${IMAGE_NAME} \
 			"docker://$${REGISTRY}/$${REGISTRYUSER}/$${IMAGE_NAME}:$${IMAGE_TAG}"
-		done
+	done
 endef
 
 define create_docker_builders
 	@
-	echo Creating builders with Docker/BuildX
+	. ./settings.env
+	echo [+] Creating builders with Docker/BuildX
+	docker buildx create --name owrxp-builder --driver docker-container --bootstrap --use --driver-opt network=host || true
+
+	@for file in Dockerfile*; do
+		IMAGE_TAG=$$(echo $$file | sed -e 's/^Dockerfile-//' )
+		echo -e [++] Creating builders for "\e[36m$${IMAGE_TAG}\e[0m"
+
+		PLATFORMS=""
+		for arch in "$${ARCHITECTURES[@]}"; do
+			PLATFORMS="$$PLATFORMS,linux/$$arch"
+		done
+		PLATFORMS=$$(echo $$PLATFORMS | cut -c2-)
+
+		echo -e [+++] "\e[36m$$IMAGE_TAG\e[0m": create builders for "\e[36m$$PLATFORMS\e[0m"
+		time docker buildx build \
+		--tag "$${REGISTRYUSER}/$${IMAGE_NAME}:$${IMAGE_TAG}" \
+		--push \
+		--platform $$PLATFORMS \
+		-f $$file \
+		.
+	done
+
+	docker buildx rm --keep-state owrxp-builder
+
 endef
 
 
@@ -178,7 +202,7 @@ define build_podman
 		release=$$(echo $$image | cut -d '-' -f 2)
 		arch=$$(echo $$image | cut -d '-' -f 3)
 		echo =====================
-		echo -e running "\e[36m$$arch\e[0m" build for "\e[36m$$distro $$release\e[0m"
+		echo -e running "\e[36m$$distro $$release\e[0m" build for "\e[36m$$arch\e[0m"
 		echo
 		mkdir -p owrx/$$distro/$$release/$$arch
 		time podman run -it --rm --arch $$arch \
@@ -193,6 +217,22 @@ define build_docker
 	@
 	. ./settings.env
 	echo [+] Building packages with Docker/BuildX
+	@for file in Dockerfile*; do
+		IMAGE_TAG=$$(echo $$file | sed -e 's/^Dockerfile-//' )
+		for arch in "$${ARCHITECTURES[@]}"; do
+			distro=$$(echo $${IMAGE_TAG} | cut -d '-' -f 1)
+			release=$$(echo $${IMAGE_TAG} | cut -d '-' -f 2)
+			echo =====================
+			echo -e running "\e[36m$$distro $$release\e[0m" build for "\e[36m$$arch\e[0m"
+			echo
+			mkdir -p owrx/$$distro/$$release/$$arch
+			time docker run -it --rm --platform linux/$$arch \
+				-v ./owrx/$$distro/$$release/$$arch:/owrx --name owrx-build-$${IMAGE_TAG} \
+				-e BUILDSCRIPT="$${BUILDSCRIPT}" \
+				-e BUILDSCRIPT_ARGS="$${BUILDSCRIPT_ARGS}" \
+				$${REGISTRYUSER}/$${IMAGE_NAME}:$${IMAGE_TAG}
+		done
+	done
 endef
 
 
