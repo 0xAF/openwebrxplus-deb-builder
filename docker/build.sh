@@ -33,11 +33,22 @@ popd
 rm -rf sdrplay $SDRPLAY_BINARY
 
 echo "+++++ OWRX+ build script..."
-wget "$BUILDSCRIPT"
-SCRIPT=$(basename "$BUILDSCRIPT")
-chmod +x ./$SCRIPT
-./$SCRIPT $BUILDSCRIPT_ARGS || exit 1
+if [ ! -d ./buildscript ]; then
+  echo "+++++ Downloading build script, because you do not have './buildscript' folder..."
+  wget "$BUILDSCRIPT"
+  SCRIPT=$(basename "$BUILDSCRIPT")
+else
+  for s in $(ls -v buildscript/*-build-*.sh); do
+    echo "+++++ Running build script $s"
+    chmod +x ./$s
+    ./$s $BUILDSCRIPT_ARGS || exit 1
+  done
+fi
 
+echo "+++++ Remove all files from output folder..."
+rm /owrx/*
+
+echo "+++++ Copy debs from /usr/src/owrx-output/$ARCH (docker folder) to output folder on the host..."
 # Copy the built packages to /owrx/ (which should be bind-mounted)
 cp -a /usr/src/owrx-output/$ARCH/* /owrx/ || exit 1
 

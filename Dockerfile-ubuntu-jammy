@@ -1,4 +1,4 @@
-FROM debian:bullseye
+FROM ubuntu:jammy
 
 LABEL org.opencontainers.image.authors="Stanislav Lechev (LZ2SLL) <af@0xAF.org>"
 LABEL org.opencontainers.image.source="https://github.com/0xAF/openwebrxplus-deb-builder"
