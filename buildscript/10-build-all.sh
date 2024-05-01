@@ -79,20 +79,20 @@ fi
 # Update build targets based on dependencies
 #
 if [ "${BUILD_OWRX:-}" == "y" ]; then
-	BUILD_PYCSDR=y
-	BUILD_OWRXCONNECTOR=y
+  BUILD_PYCSDR=y
+  BUILD_OWRXCONNECTOR=y
 fi
 if [ "${BUILD_PYCSDR_ETI:-}" == "y" ]; then
-	BUILD_CSDR_ETI=y
+  BUILD_CSDR_ETI=y
 fi
 if [ "${BUILD_PYDIGIHAM:-}" == "y" ]; then
-	BUILD_DIGIHAM=y
+  BUILD_DIGIHAM=y
 fi
 if [ "${BUILD_DIGIHAM:-}" == "y" ]; then
-	BUILD_CODECSERVER=y
+  BUILD_CODECSERVER=y
 fi
 if [ "${BUILD_PYCSDR:-}" == "y" ] || [ "${BUILD_OWRXCONNECTOR:-}" == "y" ] || [ "${BUILD_CSDR_ETI:-}" == "y" ]; then
-	BUILD_CSDR=y
+  BUILD_CSDR=y
 fi
 
 echo ======================================
