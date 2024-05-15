@@ -20,8 +20,8 @@ ARCH=$(uname -m)
 echo "+++++ Installing SDRPlay API"
 case $ARCH in
   arm*) SDRPLAY_BINARY=SDRplay_RSP_API-ARM32-3.07.2.run ;;
-  aarch64*) SDRPLAY_BINARY=SDRplay_RSP_API-Linux-3.14.0.run ;;
-  x86_64*) SDRPLAY_BINARY=SDRplay_RSP_API-Linux-3.14.0.run ;;
+  aarch64*) SDRPLAY_BINARY=SDRplay_RSP_API-Linux-3.15.1.run ;;
+  x86_64*) SDRPLAY_BINARY=SDRplay_RSP_API-Linux-3.15.1.run ;;
 esac
 wget --no-http-keep-alive https://www.sdrplay.com/software/$SDRPLAY_BINARY
 sh $SDRPLAY_BINARY --noexec --target sdrplay
