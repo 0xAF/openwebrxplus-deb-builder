@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# AF: once this is merget with Marat, just wget the $BUILDSCRIPT env and execute it with the $1 arg
+# AF: once this is merged with Marat, just wget the $BUILDSCRIPT env and execute it with the $1 arg
 
 #
 # This script will check out and build all the latest OpenWebRX+
