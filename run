@@ -1,0 +1,188 @@
+#!/bin/bash
+CWD="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+cd "${CWD}" || exit 1
+# shellcheck source=./lib/log.sh
+source "${CWD}"/lib/log.sh
+
+# to use APT proxy, run: ./image start-apt-cache
+APT_PROXY=
+APT_PROXY="http://$(ip -o route get to 8.8.8.8 | sed -n 's/.*src \([0-9.]\+\).*/\1/p'):3142"
+
+HAS_DOCKER=$(docker -v 2>/dev/null || false)
+HAS_BUILDX=$(docker buildx version 2>/dev/null || false)
+
+start-apt-cache() {
+  cd "${CWD}"/apt-cache || exit 1
+  docker compose up -d
+  cd .. || exit 1
+}
+
+stop-apt-cache() {
+  cd "${CWD}"/apt-cache || exit 1
+  docker compose down -v
+  cd .. || exit 1
+}
+
+check-apt() {
+  cd "${CWD}"/apt-cache || exit 1
+  if [ "$(docker compose ps -q)" != "" ]; then
+    log log "APT-Cache is running..."
+  else
+    log inf "Starting APT-Cache..."
+    start-apt-cache
+  fi
+  cd .. || exit 1
+}
+
+check-docker() {
+  log inf "Docker: [4[${HAS_DOCKER}]], [6[${HAS_BUILDX}]]"
+  if [ -z "${HAS_DOCKER}" ] || [ -z "${HAS_BUILDX}" ]; then
+    log err "Cannot find Docker or BuildX. Please install them."
+    exit 1
+  fi
+}
+
+settings() {
+  if [ ! -f ./settings.env ]; then
+    cat > settings.env << __EOF__
+# Settings file for the openwebrx-deb-builder
+
+# Architectures to build for:
+# possible values: amd64, arm64, armhf
+# this variable should be a bash array in ()
+ARCHITECTURES=(amd64 arm64 armhf)
+#ARCHITECTURES=(amd64)
+
+# If you are going to push the docker builder image to dockerhub,
+# you should set your username and use 'docker login' command.
+# If you do not know what this is, do not touch these variables.
+PUSH_TO_DOCKERHUB=n
+REGISTRY="docker.com"
+REGISTRYUSER="slechev"
+IMAGE_NAME="openwebrxplus-deb-builder"
+
+# Packages to compile
+# Please note, that we will compile the dependency packages too.
+
+# OpenWebRX+ package
+BUILD_OWRX=y
+GIT_OPENWEBRX=https://github.com/luarvique/openwebrx.git
+
+BUILD_CSDR=n
+GIT_CSDR=https://github.com/luarvique/csdr.git
+BUILD_PYCSDR=n
+GIT_PYCSDR=https://github.com/luarvique/pycsdr.git
+BUILD_CSDR_ETI=n
+GIT_CSDR_ETI=https://github.com/luarvique/csdr-eti.git
+BUILD_PYCSDR_ETI=n
+GIT_PYCSDR_ETI=https://github.com/luarvique/pycsdr-eti.git
+
+BUILD_OWRXCONNECTOR=n
+GIT_OWRXCONNECTOR=https://github.com/luarvique/owrx_connector.git
+
+BUILD_SOAPYSDRPLAY3=n
+GIT_SOAPYSDRPLAY3=https://github.com/luarvique/SoapySDRPlay3.git
+
+BUILD_CODECSERVER=n
+GIT_CODECSERVER=https://github.com/jketterl/codecserver.git
+
+BUILD_DIGIHAM=n
+GIT_DIGIHAM=https://github.com/jketterl/digiham.git
+BUILD_PYDIGIHAM=n
+GIT_PYDIGIHAM=https://github.com/jketterl/pydigiham.git
+
+BUILD_JS8PY=n
+GIT_JS8PY=https://github.com/jketterl/js8py.git
+
+BUILD_REDSEA=n
+GIT_REDSEA=https://github.com/luarvique/redsea.git
+
+BUILD_ACARSDEC=n # this needs libacars, see the next line
+COMPILE_LIBACARS_FROM_JAKOB=n # should we compile libacars from Jakon's repo or use our libacars in ppa repo
+
+# vim: set ft=sh
+__EOF__
+  fi
+	${EDITOR:-vim} ./settings.env
+}
+
+
+create() {
+	source ./settings.env
+	if [ "${PUSH_TO_DOCKERHUB:-}" == "y" ]; then DOCKER_PUSH='--push'; else DOCKER_PUSH='--load'; fi
+  if [ ${#ARCHITECTURES[@]} -gt 1 ] && [ "${PUSH_TO_DOCKERHUB:-}" != "y" ]; then
+    log err "Creating multi-arch builders is supported only if you push to docker hub. Reduce to one arch only if you are going to create a builder locally."
+    exit 1
+  fi
+	log inf "Creating builders with Docker/BuildX"
+	docker buildx create --name owrxp-builder --driver docker-container --bootstrap --use --driver-opt network=host || true
+
+	for file in docker/Dockerfile*; do
+		IMAGE_TAG=$(echo "${file}" | sed -e 's/^docker\/Dockerfile-//' )
+		log inf "Creating builders for [6[${IMAGE_TAG}]]"
+
+		PLATFORMS=""
+		for arch in "${ARCHITECTURES[@]}"; do
+			PLATFORMS="${PLATFORMS},linux/$arch"
+		done
+		PLATFORMS=$(echo "${PLATFORMS}" | cut -c2-)
+
+		log inf "[6[${IMAGE_TAG}]] creating builders for [5[${PLATFORMS}]]"
+		time docker buildx build \
+      --tag "${REGISTRYUSER}/${IMAGE_NAME}:${IMAGE_TAG}" \
+      --platform "${PLATFORMS}" \
+      ${DOCKER_PUSH} \
+      -f "${file}" \
+		.
+	done
+
+	docker buildx rm --keep-state owrxp-builder
+}
+
+build() {
+	source ./settings.env
+	log inf "Building packages with Docker/BuildX"
+	for file in docker/Dockerfile*; do
+		IMAGE_TAG=$(echo "${file}" | sed -e 's/^docker\/Dockerfile-//' )
+		for arch in "${ARCHITECTURES[@]}"; do
+			distro=$(echo "${IMAGE_TAG}" | cut -d '-' -f 1)
+			release=$(echo "${IMAGE_TAG}" | cut -d '-' -f 2)
+			log inf "running [4[${distro}]] [6[${release}]] build for [5[${arch}]]"
+			mkdir -p "owrx/${distro}/${release}/${arch}"
+			time docker run -it --rm --platform "${PLATFORMS}" \
+				--name "owrx-build-${IMAGE_TAG}" \
+        -e APT_PROXY="${APT_PROXY}" \
+        -e OUTPUT_DIR="/output/${arch}" \
+				-v "${CWD}/owrx/${distro}/${release}/:/output" \
+        -v "${CWD}/settings.env:/settings.env" \
+        -v "${CWD}/scripts:/scripts" \
+				"${REGISTRYUSER}/${IMAGE_NAME}:${IMAGE_TAG}"
+		done
+	done
+
+}
+
+## MAIN
+log "Builder for OpenWebRX+ DEB Packages"
+check-docker
+check-apt
+
+usage() {
+  log war "Usage: $0 [command]"
+  log war ". commands:"
+  log war "... [5[build]] - build DEB packages from settings"
+  log war "... [5[create]] - create docker builders"
+  log war "... [5[settings]] - create and/or edit settings"
+  log war "... [5[start-apt-cache]] - to start apt-cache docker container"
+  log war "... [5[stop-apt-cache]] - to stop apt-cache docker container"
+  echo
+  log war "NOTE: to clear the caches, you should remove the 'buildx' volume and the 'cache' folder."
+}
+
+
+if [[ $(type -t "$1") == 'function' ]]; then
+  $1 "$@"
+else
+  [ "$1" != "" ] && log err "Command '$1' not found..." && echo
+  usage
+fi

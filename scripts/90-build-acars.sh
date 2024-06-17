@@ -5,10 +5,10 @@ ARCH=$(uname -m)
 OUTPUT_DIR=/usr/src/owrx-output/$ARCH/
 mkdir -p $OUTPUT_DIR
 
-if [ "${BUILD_ACARS:-}" == "y" ]; then
+if [ "${BUILD_ACARSDEC:-}" == "y" ]; then
   apt install -y libxml2-dev libjansson-dev
 
-  if [ "${LIBACARS_FROM_JAKOB:-}" == "y" ]; then
+  if [ "${COMPILE_LIBACARS_FROM_JAKOB:-}" == "y" ]; then
     # use Jakob's version of libacars
     mkdir libacars
     pushd libacars

@@ -1,9 +1,10 @@
 #!/bin/sh
 
 fail() {
-  printf "FAIL: %s\n" "$1"
+  printf "\n\n\nFAIL: %s\n" "$1"
   if [ -t 1 ]; then
-    echo;echo;echo "Dropping into a shell... (you probably want to: cd /usr/src/)"
+    echo;echo;echo "Dropping into a shell..."
+    cd /
     exec /bin/bash
   else
     exit 1

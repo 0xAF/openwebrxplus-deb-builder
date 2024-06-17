@@ -1,41 +1,70 @@
 #!/bin/bash
 
+# shellcheck disable=SC1091
+source /log.sh
+export -f log
+
 if dpkg-buildpackage --help | grep "\-\-post\-clean" 2>/dev/null >/dev/null; then
-  DPKG_BUILDPACKAGE="dpkg-buildpackage --post-clean --pre-clean -b -us -uc"
+  export DPKG_BUILDPACKAGE="dpkg-buildpackage --post-clean --pre-clean -b -us -uc"
 else
-  DPKG_BUILDPACKAGE="dpkg-buildpackage -b -us -uc"
+  export DPKG_BUILDPACKAGE="dpkg-buildpackage -b -us -uc"
 fi
 
-# Ensure /owrx/ is bind-mounted
-[ -d /owrx/ ] || exit 1
+die() {
+  if [[ $(type -t log) == function ]]; then
+    echo;echo;echo;log err "$*"
+  else
+    echo;echo;echo;echo "$*"
+  fi
+  exit 1
+}
 
-echo "+++++ APT update/upgrade"
+if [ -n "$APT_PROXY" ]; then
+  log inf "Setting APT-PROXY: [3[${APT_PROXY}]]"
+  export http_proxy=${APT_PROXY}
+  echo "Acquire::http { Proxy \"${APT_PROXY}\"; };" > /etc/apt/apt.conf.d/51cache
+else
+  rm -f /etc/apt/apt.conf.d/51cache
+fi
+
+# Do some checks
+[ -d /output ] || die "ERROR: /output is not mounted"
+# shellcheck disable=SC1091
+[ -f /settings.env ] || die "ERROR: /settings.env is missing"
+[ -d /scripts ] || die "ERROR: /scripts is not mounted"
+[ -z "${OUTPUT_DIR}" ] && die "ERROR: OUTPUT_DIR is not set"
+
+cd / || die "cannot change dir to /"
+
+set -a # export defined variables automatically
+# shellcheck disable=SC1091
+source /settings.env
+set +a
+
+log inf "APT update/upgrade"
 apt update
 apt upgrade -y
 
-cd /usr/src || exit 1
+log suc "Clean the output folder ${OUTPUT_DIR}"
+rm -rf "${OUTPUT_DIR:-}/*"
 
-echo "+++++ OWRX+ build script..."
-if [ ! -d ./buildscript ]; then
-  echo "+++++ Downloading build script, because you do not have './buildscript' folder..."
-  wget "$BUILDSCRIPT"
-  SCRIPT=$(basename "$BUILDSCRIPT")
-else
-  for s in $(ls -v buildscript/*-build-*.sh); do
-    echo "+++++ Running build script $s"
-    chmod +x ./$s
-    ./$s $BUILDSCRIPT_ARGS || exit 1
-  done
-fi
-
-echo "+++++ Remove all files from output folder..."
-rm /owrx/*
-
-echo "+++++ Copy debs from /usr/src/owrx-output/$ARCH (docker folder) to output folder on the host..."
-# Copy the built packages to /owrx/ (which should be bind-mounted)
-cp -a /usr/src/owrx-output/$ARCH/* /owrx/ || exit 1
+log suc "Running build scripts..."
+# shellcheck disable=SC2045
+for s in $(ls -v /scripts/*-build-*.sh); do
+  if [ -x "${s}" ]; then 
+    echo;echo
+    log suc "Running build script [4[${s}]]"
+    echo;echo
+    "${s}" || exit 1
+    echo;echo
+    log suc "Done with build script [4[${s}]]"
+    echo;echo
+  else
+    log war "Skipping build script [4[${s}]]. It is not executable."
+  fi
+done
 
 # Correct ownership of the artifacts.
 # Without this, the artifacts directory and it's contents end up owned
 # by root instead of the local user on Linux boxes
-chown -R --reference=/owrx /owrx/*
+chown -R --reference=${OUTPUT_DIR} ${OUTPUT_DIR}/*
