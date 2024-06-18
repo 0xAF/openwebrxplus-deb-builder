@@ -46,59 +46,39 @@ settings() {
   if [ ! -f ./settings.env ]; then
     cat > settings.env << __EOF__
 # Settings file for the openwebrx-deb-builder
+# shellcheck disable=SC2148,SC2034 shell=bash
 
-# Architectures to build for:
-# possible values: amd64, arm64, armhf
-# this variable should be a bash array in ()
+# Architectures to build for (space separated list in brackets):
+# possible values: amd64 arm64 armhf
 ARCHITECTURES=(amd64 arm64 armhf)
-#ARCHITECTURES=(amd64)
 
-# If you are going to push the docker builder image to dockerhub,
+# setup multi-job compile to all CPU cores, but leave 4 for the system
+MAKEFLAGS=-j$(nproc --ignore=4)
+
+# Packages to compile. Set to 'y' or 'n'.
+# NOTE: the builder will compile the dependency packages too.
+BUILD_OWRX=y
+BUILD_CSDR=n
+BUILD_PYCSDR=n
+BUILD_CSDR_ETI=n
+BUILD_PYCSDR_ETI=n
+BUILD_OWRXCONNECTOR=n
+BUILD_SOAPYSDRPLAY3=n
+BUILD_CODECSERVER=n
+BUILD_DIGIHAM=n
+BUILD_PYDIGIHAM=n
+BUILD_JS8PY=n
+BUILD_REDSEA=n
+BUILD_LIBACARS=n
+BUILD_ACARSDEC=n
+
+# If you are going to push the builder image to dockerhub,
 # you should set your username and use 'docker login' command.
 # If you do not know what this is, do not touch these variables.
 PUSH_TO_DOCKERHUB=n
 REGISTRY="docker.com"
 REGISTRYUSER="slechev"
 IMAGE_NAME="openwebrxplus-deb-builder"
-
-# Packages to compile
-# Please note, that we will compile the dependency packages too.
-
-# OpenWebRX+ package
-BUILD_OWRX=y
-GIT_OPENWEBRX=https://github.com/luarvique/openwebrx.git
-
-BUILD_CSDR=n
-GIT_CSDR=https://github.com/luarvique/csdr.git
-BUILD_PYCSDR=n
-GIT_PYCSDR=https://github.com/luarvique/pycsdr.git
-BUILD_CSDR_ETI=n
-GIT_CSDR_ETI=https://github.com/luarvique/csdr-eti.git
-BUILD_PYCSDR_ETI=n
-GIT_PYCSDR_ETI=https://github.com/luarvique/pycsdr-eti.git
-
-BUILD_OWRXCONNECTOR=n
-GIT_OWRXCONNECTOR=https://github.com/luarvique/owrx_connector.git
-
-BUILD_SOAPYSDRPLAY3=n
-GIT_SOAPYSDRPLAY3=https://github.com/luarvique/SoapySDRPlay3.git
-
-BUILD_CODECSERVER=n
-GIT_CODECSERVER=https://github.com/jketterl/codecserver.git
-
-BUILD_DIGIHAM=n
-GIT_DIGIHAM=https://github.com/jketterl/digiham.git
-BUILD_PYDIGIHAM=n
-GIT_PYDIGIHAM=https://github.com/jketterl/pydigiham.git
-
-BUILD_JS8PY=n
-GIT_JS8PY=https://github.com/jketterl/js8py.git
-
-BUILD_REDSEA=n
-GIT_REDSEA=https://github.com/luarvique/redsea.git
-
-BUILD_ACARSDEC=n # this needs libacars, see the next line
-COMPILE_LIBACARS_FROM_JAKOB=n # should we compile libacars from Jakon's repo or use our libacars in ppa repo
 
 # vim: set ft=sh
 __EOF__
@@ -149,10 +129,11 @@ build() {
 			release=$(echo "${IMAGE_TAG}" | cut -d '-' -f 2)
 			log inf "running [4[${distro}]] [6[${release}]] build for [5[${arch}]]"
 			mkdir -p "owrx/${distro}/${release}/${arch}"
-			time docker run -it --rm --platform "${PLATFORMS}" \
+			time docker run -it --rm --platform "linux/${arch}" \
 				--name "owrx-build-${IMAGE_TAG}" \
         -e APT_PROXY="${APT_PROXY}" \
         -e OUTPUT_DIR="/output/${arch}" \
+        -e MAKEFLAGS="${MAKEFLAGS}" \
 				-v "${CWD}/owrx/${distro}/${release}/:/output" \
         -v "${CWD}/settings.env:/settings.env" \
         -v "${CWD}/scripts:/scripts" \

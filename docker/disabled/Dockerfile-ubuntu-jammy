@@ -57,6 +57,8 @@ RUN \
       libliquid-dev \
       mason \
       ninja-build \
+      libxml2-dev \
+      libjansson-dev \
   && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/* && \

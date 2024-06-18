@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # read and export dependencies
+# shellcheck disable=SC1091
 source /build.env
 
 # set default value if not provided
