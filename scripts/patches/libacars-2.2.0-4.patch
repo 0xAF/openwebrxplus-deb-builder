@@ -1,0 +1,110 @@
+diff -uNr libacars.org/debian/changelog libacars/debian/changelog
+--- libacars.org/debian/changelog	1970-01-01 02:00:00.000000000 +0200
++++ libacars/debian/changelog	2024-07-06 00:26:39.801117480 +0300
+@@ -0,0 +1,5 @@
++libacars (2.2.0-4) bookworm; urgency=low
++
++  * Packaging by LZ2SLL (thanks to Jakob Ketterl <jakob.ketterl@gmx.de>)
++
++ -- Stanislav Lechev [LZ2SLL] <af@0xaf.org>  Fri, 05 Jul 2024 21:15:33 +0000
+diff -uNr libacars.org/debian/control libacars/debian/control
+--- libacars.org/debian/control	1970-01-01 02:00:00.000000000 +0200
++++ libacars/debian/control	2024-07-06 00:24:39.056134445 +0300
+@@ -0,0 +1,35 @@
++Source: libacars
++Section: libs
++Priority: optional
++Maintainer: Stanislav Lechev [LZ2SLL] <af@0xaf.org>
++Rules-Requires-Root: no
++Build-Depends:
++ debhelper-compat (= 13),
++ cmake,
++ zlib1g-dev,
++ libxml2-dev,
++ libjansson-dev,
++Standards-Version: 4.6.2
++Homepage: https://github.com/szpajder/libacars
++Vcs-Browser: https://github.com/szpajder/libacars
++Vcs-Git: https://github.com/szpajder/libacars.git
++
++Package: libacars2
++Architecture: any
++Depends:
++ ${shlibs:Depends},
++ ${misc:Depends},
++Description: Library for decoding various ACARS message payloads
++ A library for decoding various ACARS message payloads
++
++Package: libacars-dev
++Architecture: any
++Depends: libacars2 (=${binary:Version}), ${misc:Depends}
++Description: development dependencies includes for libacars
++ A library for decoding various ACARS message payloads
++
++Package: libacars-tools
++Architecture: any
++Depends: libacars2 (=${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
++Description: additional command line tools to decode acars messages
++ A library for decoding various ACARS message payloads
+diff -uNr libacars.org/debian/copyright libacars/debian/copyright
+--- libacars.org/debian/copyright	1970-01-01 02:00:00.000000000 +0200
++++ libacars/debian/copyright	2024-07-06 00:29:42.536942302 +0300
+@@ -0,0 +1,28 @@
++Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
++Source: <url://example.com>
++Upstream-Name: libacars
++Upstream-Contact: https://github.com/szpajder/libacars
++
++Files:
++ *
++Copyright:
++ 2018-2023, Tomasz Lemiech <szpajder@gmail.com>
++License: GPL-2.0+
++
++License: GPL-2.0+
++ This package is free software; you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation; either version 2 of the License, or
++ (at your option) any later version.
++ .
++ This package is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++ .
++ You should have received a copy of the GNU General Public License
++ along with this program. If not, see <https://www.gnu.org/licenses/>
++Comment:
++ On Debian systems, the complete text of the GNU General
++ Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
++
+diff -uNr libacars.org/debian/libacars2.install libacars/debian/libacars2.install
+--- libacars.org/debian/libacars2.install	1970-01-01 02:00:00.000000000 +0200
++++ libacars/debian/libacars2.install	2024-07-06 00:30:37.014350781 +0300
+@@ -0,0 +1 @@
++usr/lib/*/*.so.*
+diff -uNr libacars.org/debian/libacars-dev.install libacars/debian/libacars-dev.install
+--- libacars.org/debian/libacars-dev.install	1970-01-01 02:00:00.000000000 +0200
++++ libacars/debian/libacars-dev.install	2024-07-06 00:30:06.423934283 +0300
+@@ -0,0 +1,4 @@
++usr/include
++usr/lib/*/pkgconfig
++usr/lib/*/*.so
++usr/share/doc
+diff -uNr libacars.org/debian/libacars-tools.install libacars/debian/libacars-tools.install
+--- libacars.org/debian/libacars-tools.install	1970-01-01 02:00:00.000000000 +0200
++++ libacars/debian/libacars-tools.install	2024-07-06 00:30:20.670794939 +0300
+@@ -0,0 +1 @@
++usr/bin/*
+diff -uNr libacars.org/debian/rules libacars/debian/rules
+--- libacars.org/debian/rules	1970-01-01 02:00:00.000000000 +0200
++++ libacars/debian/rules	2024-07-06 00:30:55.224598670 +0300
+@@ -0,0 +1,3 @@
++#!/usr/bin/make -f
++%:
++	dh $@
+diff -uNr libacars.org/debian/source/format libacars/debian/source/format
+--- libacars.org/debian/source/format	1970-01-01 02:00:00.000000000 +0200
++++ libacars/debian/source/format	2024-07-06 00:15:33.911958205 +0300
+@@ -0,0 +1 @@
++3.0 (quilt)

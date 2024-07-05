@@ -1,0 +1,87 @@
+diff -uNr acarsdec.org/debian/changelog acarsdec/debian/changelog
+--- acarsdec.org/debian/changelog	1970-01-01 02:00:00.000000000 +0200
++++ acarsdec/debian/changelog	2024-07-06 01:10:51.954256627 +0300
+@@ -0,0 +1,5 @@
++acarsdec (3.7-1) bookworm; urgency=low
++
++  * Packaging by LZ2SLL (Thanks to Jakob Ketterl <jakob.ketterl@gmx.de>)
++
++ -- Stanislav Lechev [LZ2SLL] <af@0xaf.org>  Fri, 05 Jul 2024 22:05:38 +0000
+diff -uNr acarsdec.org/debian/control acarsdec/debian/control
+--- acarsdec.org/debian/control	1970-01-01 02:00:00.000000000 +0200
++++ acarsdec/debian/control	2024-07-06 01:12:48.244801801 +0300
+@@ -0,0 +1,24 @@
++Source: acarsdec
++Section: hamradio
++Priority: optional
++Maintainer: Stanislav Lechev [LZ2SLL] <af@0xaf.org>
++Rules-Requires-Root: no
++Build-Depends:
++ debhelper-compat (= 13),
++ cmake,
++ libacars-dev,
++ libsndfile1-dev,
++ pkg-config,
++Standards-Version: 4.6.2
++Homepage: https://github.com/TLeconte/acarsdec
++Vcs-Browser: https://github.com/TLeconte/acarsdec
++Vcs-Git: https://github.com/TLeconte/acarsdec.git
++
++Package: acarsdec
++Architecture: any
++Depends:
++ ${shlibs:Depends},
++ ${misc:Depends},
++Description: ACARS SDR decoder
++ Acarsdec is a multi-channels acars decoder with built-in rtl_sdr, airspy front
++ end or sdrplay device.
+diff -uNr acarsdec.org/debian/copyright acarsdec/debian/copyright
+--- acarsdec.org/debian/copyright	1970-01-01 02:00:00.000000000 +0200
++++ acarsdec/debian/copyright	2024-07-06 01:14:24.541979574 +0300
+@@ -0,0 +1,34 @@
++Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
++Source: <url://example.com>
++Upstream-Name: acarsdec
++Upstream-Contact: https://github.com/TLeconte/acarsdec
++
++Files:
++ *
++Copyright:
++ 2014-2018, Thierry Leconte
++License: LGPL-2
++
++Files:
++ debian/*
++Copyright:
++ 2024 Stanislav Lechev [LZ2SLL] <af@0xaf.org>
++License: GPL-2.0+
++
++License: LGPL-2
++ This package is free software; you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation; either version 2 of the License, or
++ (at your option) any later version.
++ .
++ This package is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++ .
++ You should have received a copy of the GNU General Public License
++ along with this program. If not, see <https://www.gnu.org/licenses/>
++Comment:
++ On Debian systems, the complete text of the GNU General
++ Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
++
+diff -uNr acarsdec.org/debian/rules acarsdec/debian/rules
+--- acarsdec.org/debian/rules	1970-01-01 02:00:00.000000000 +0200
++++ acarsdec/debian/rules	2024-07-06 01:14:32.622024582 +0300
+@@ -0,0 +1,3 @@
++#!/usr/bin/make -f
++%:
++	dh $@
+diff -uNr acarsdec.org/debian/source/format acarsdec/debian/source/format
+--- acarsdec.org/debian/source/format	1970-01-01 02:00:00.000000000 +0200
++++ acarsdec/debian/source/format	2024-07-06 01:05:38.873347619 +0300
+@@ -0,0 +1 @@
++3.0 (quilt)
