@@ -52,6 +52,7 @@ colorify "${BUILD_REDSEA:-n}" redsea
 colorify "${BUILD_SOAPYSDRPLAY3:-n}" SoapySDRPlay3
 colorify "${BUILD_ACARSDEC:-n}" AcarsDec
 colorify "${BUILD_LIBACARS:-n}" LibAcars
+colorify "${BUILD_NRSC5:-n}" nrsc5
 
 sleep 3
 
@@ -59,3 +60,4 @@ echo "set -a" > /build.env
 printenv | grep -E ^BUILD_ >> /build.env
 echo "set +a" >> build.env
 echo "cd /" >> build.env
+
