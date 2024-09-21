@@ -12,6 +12,13 @@ if [ "${BUILD_REDSEA:-}" == "y" ]; then
 	log suc "Building Redsea..."
 	git clone -b master "$GIT_REDSEA"
 	pushd redsea
+	. /etc/os-release
+	if [[ "$UBUNTU_CODENAME" == "jammy" || "$UBUNTU_CODENAME" == "noble" ]]; then
+		# this is for ubuntu 22.04/24.04
+		echo '---------- oooohh, it is an ubuntu....'
+		apt install -y nlohmann-json3-dev meson || true
+		echo "debian/redsea/usr/bin/redsea /usb/bin" > debian/install
+	fi
 	dpkg-buildpackage -us -uc
 	popd
 	# Not installing Redsea here since there are no further
