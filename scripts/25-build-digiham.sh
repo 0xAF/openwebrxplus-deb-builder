@@ -12,6 +12,7 @@ if [ "${BUILD_DIGIHAM:-}" == "y" ]; then
 	log suc "Building DigiHAM..."
 	git clone -b master "$GIT_DIGIHAM"
 	pushd digiham
+	sed -i 's/set(CMAKE_CXX_STANDARD 11)/set(CMAKE_CXX_STANDARD 17)/' CMakeLists.txt
 	dpkg-buildpackage -us -uc
 	popd
 	# PyDigiHAM build depends on the latest DigiHAM

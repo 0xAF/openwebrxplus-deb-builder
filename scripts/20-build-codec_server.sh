@@ -5,6 +5,8 @@ set -euo pipefail
 # shellcheck disable=SC1091
 source /build.env
 
+apt install -y adduser
+
 # set default value if not provided
 : "${GIT_CODECSERVER:=https://github.com/jketterl/codecserver.git}"
 
