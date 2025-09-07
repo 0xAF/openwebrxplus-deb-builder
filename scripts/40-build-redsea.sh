@@ -6,7 +6,8 @@ set -euo pipefail
 source /build.env
 
 # set default value if not provided
-: "${GIT_REDSEA:=https://github.com/luarvique/redsea.git}"
+#: "${GIT_REDSEA:=https://github.com/luarvique/redsea.git}"
+: "${GIT_REDSEA:=https://github.com/windytan/redsea.git}"
 
 if [ "${BUILD_REDSEA:-}" == "y" ]; then
 	apt install -y nlohmann-json3-dev meson || true
