@@ -1,4 +1,4 @@
-FROM debian:bookworm
+FROM ubuntu:jammy
 
 LABEL org.opencontainers.image.authors="Stanislav Lechev (LZ2SLL) <af@0xAF.org>"
 LABEL org.opencontainers.image.source="https://github.com/0xAF/openwebrxplus-deb-builder"
@@ -16,15 +16,6 @@ ENV DEBIAN_FRONTEND=noninteractive
 COPY docker/entrypoint.sh /entrypoint.sh
 COPY docker/build.sh /build.sh
 COPY lib/log.sh /log.sh
-
-RUN echo "deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
-    echo "deb http://deb.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
-    echo "deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
-    rm -f /etc/apt/sources.list.d/debian.sources
-
-  # apt install -y software-properties-common && \
-  # apt-add-repository -y --component non-free && \
-  # apt update && \
 
 RUN \
   apt-get update && \
@@ -47,7 +38,6 @@ RUN \
       gcc \
       git-buildpackage \
       git-core \
-      git \
       make \
       pkg-config \
       protobuf-compiler \
@@ -65,7 +55,6 @@ RUN \
       libicu-dev \
       libsndfile1-dev \
       libliquid-dev \
-      mason \
       ninja-build \
       libxml2-dev \
       libjansson-dev \

@@ -52,17 +52,24 @@ settings() {
 # possible values: amd64 arm64 armhf
 ARCHITECTURES=(amd64 arm64 armhf)
 
+# list of docker/Dockerfile-* files to build for by default
+DISTROS=(debian-bookworm debian-trixie ubuntu-noble)
+
 # setup multi-job compile to all CPU cores, but leave 4 for the system
 MAKEFLAGS=-j$(nproc --ignore=4)
 
 # Packages to compile. Set to 'y' or 'n'.
 # NOTE: the builder will compile the dependency packages too.
 BUILD_OWRX=y
+
 BUILD_CSDR=n
 BUILD_PYCSDR=n
 BUILD_CSDR_ETI=n
 BUILD_PYCSDR_ETI=n
 BUILD_OWRXCONNECTOR=n
+BUILD_CWSKIMMER=n
+BUILD_DREAM=n
+
 BUILD_SOAPYSDRPLAY3=n
 BUILD_CODECSERVER=n
 BUILD_DIGIHAM=n
@@ -72,7 +79,6 @@ BUILD_REDSEA=n
 BUILD_LIBACARS=n
 BUILD_ACARSDEC=n
 BUILD_NRSC5=n
-BUILD_CWSKIMMER=n
 
 # If you are going to push the builder image to dockerhub,
 # you should set your username and use 'docker login' command.
@@ -100,7 +106,21 @@ create() {
 	docker buildx create --name owrxp-builder --driver docker-container --bootstrap --use --driver-opt network=host || true
 
 	for file in docker/Dockerfile*; do
-		IMAGE_TAG=$(echo "${file}" | sed -e 's/^docker\/Dockerfile-//' )
+    tag="${file##*/}"
+    tag="${tag#Dockerfile-}"
+    in_list=false
+    for d in "${DISTROS[@]}"; do
+      if [[ "$d" == "$tag" ]]; then
+        in_list=true
+        break
+      fi
+    done
+    if [[ $in_list == false ]]; then
+      log inf "Skipping ${tag} (not in DISTROS)"
+      continue
+    fi
+		# IMAGE_TAG=$(echo "${file}" | sed -e 's/^docker\/Dockerfile-//' )
+		IMAGE_TAG=$tag
 		log inf "Creating builders for [6[${IMAGE_TAG}]]"
 
 		PLATFORMS=""
@@ -125,7 +145,21 @@ build() {
 	source ./settings.env
 	log inf "Building packages with Docker/BuildX"
 	for file in docker/Dockerfile*; do
-		IMAGE_TAG=$(echo "${file}" | sed -e 's/^docker\/Dockerfile-//' )
+    tag="${file##*/}"
+    tag="${tag#Dockerfile-}"
+    in_list=false
+    for d in "${DISTROS[@]}"; do
+      if [[ "$d" == "$tag" ]]; then
+        in_list=true
+        break
+      fi
+    done
+    if [[ $in_list == false ]]; then
+      log inf "Skipping ${tag} (not in DISTROS)"
+      continue
+    fi
+		# IMAGE_TAG=$(echo "${file}" | sed -e 's/^docker\/Dockerfile-//' )
+		IMAGE_TAG=$tag
 		for arch in "${ARCHITECTURES[@]}"; do
 			distro=$(echo "${IMAGE_TAG}" | cut -d '-' -f 1)
 			release=$(echo "${IMAGE_TAG}" | cut -d '-' -f 2)

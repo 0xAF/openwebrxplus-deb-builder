@@ -58,6 +58,41 @@ RUN \
       ninja-build \
       libxml2-dev \
       libjansson-dev \
+      libc-bin \
+      \
+      # Qt5 (minimal for console mode)
+      qt5-qmake \
+      qtbase5-dev \
+      libqwt-qt5-dev \
+      libqt5svg5-dev \
+      \
+      # Audio libraries (FDK-AAC from non-free)
+      libfdk-aac-dev \
+      libfdk-aac2 \
+      libfaad-dev \
+      libopus-dev \
+      \
+      # Signal processing
+      libfftw3-dev \
+      libspeex-dev \
+      libspeexdsp-dev \
+      libsamplerate0-dev \
+      \
+      # Audio output
+      libpulse-dev \
+      pulseaudio \
+      libasound2-dev \
+      \
+      # Hardware support
+      libhamlib-dev \
+      libusb-1.0-0-dev \
+      libgps-dev \
+      \
+      # Network capture
+      libpcap-dev \
+      \
+      # Utilities
+      file \
   && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/* && \

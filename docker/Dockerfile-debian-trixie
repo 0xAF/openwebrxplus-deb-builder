@@ -17,6 +17,11 @@ COPY docker/entrypoint.sh /entrypoint.sh
 COPY docker/build.sh /build.sh
 COPY lib/log.sh /log.sh
 
+RUN echo "deb http://deb.debian.org/debian trixie main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
+    echo "deb http://deb.debian.org/debian-security trixie-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+    echo "deb http://deb.debian.org/debian trixie-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+    rm -f /etc/apt/sources.list.d/debian.sources
+
 RUN \
   apt-get update && \
   apt-get upgrade -y && \
@@ -59,6 +64,41 @@ RUN \
       libxml2-dev \
       libjansson-dev \
       adduser \
+      libc-bin \
+      \
+      # Qt5 (minimal for console mode)
+      qt5-qmake \
+      qtbase5-dev \
+      libqwt-qt5-dev \
+      libqt5svg5-dev \
+      \
+      # Audio libraries (FDK-AAC from non-free)
+      libfdk-aac-dev \
+      libfdk-aac2t64 \
+      libfaad-dev \
+      libopus-dev \
+      \
+      # Signal processing
+      libfftw3-dev \
+      libspeex-dev \
+      libspeexdsp-dev \
+      libsamplerate0-dev \
+      \
+      # Audio output
+      libpulse-dev \
+      pulseaudio \
+      libasound2-dev \
+      \
+      # Hardware support
+      libhamlib-dev \
+      libusb-1.0-0-dev \
+      libgps-dev \
+      \
+      # Network capture
+      libpcap-dev \
+      \
+      # Utilities
+      file \
   && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/* && \

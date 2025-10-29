@@ -54,6 +54,7 @@ colorify "${BUILD_ACARSDEC:-n}" AcarsDec
 colorify "${BUILD_LIBACARS:-n}" LibAcars
 colorify "${BUILD_NRSC5:-n}" nrsc5
 colorify "${BUILD_CWSKIMMER:-n}" cwskimmer
+colorify "${BUILD_DREAM:-n}" dream
 
 sleep 3
 
