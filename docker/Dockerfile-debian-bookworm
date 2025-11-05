@@ -74,8 +74,6 @@ RUN \
       # Qt5 (minimal for console mode)
       qt5-qmake \
       qtbase5-dev \
-      libqwt-qt5-dev \
-      libqt5svg5-dev \
       \
       # Audio libraries (FDK-AAC from non-free)
       libfdk-aac-dev \
