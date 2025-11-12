@@ -53,7 +53,7 @@ settings() {
 ARCHITECTURES=(amd64 arm64 armhf)
 
 # list of docker/Dockerfile-* files to build for by default
-DISTROS=(debian-bookworm debian-trixie ubuntu-noble)
+DISTROS=(debian-bullseye debian-bookworm debian-trixie ubuntu-jammy ubuntu-noble)
 
 # setup multi-job compile to all CPU cores, but leave 4 for the system
 MAKEFLAGS=-j$(nproc --ignore=4)
@@ -67,7 +67,8 @@ BUILD_PYCSDR=n
 BUILD_CSDR_ETI=n
 BUILD_PYCSDR_ETI=n
 BUILD_OWRXCONNECTOR=n
-BUILD_CWSKIMMER=n
+BUILD_SKIMMER=n
+BUILD_DUMP978=n
 BUILD_DREAM=n
 
 BUILD_SOAPYSDRPLAY3=n

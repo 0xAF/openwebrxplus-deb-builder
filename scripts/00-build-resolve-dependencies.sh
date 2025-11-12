@@ -17,7 +17,7 @@ fi
 if [ "${BUILD_DIGIHAM:-}" == "y" ]; then
   export BUILD_CODECSERVER=y
 fi
-if [ "${BUILD_PYCSDR:-}" == "y" ] || [ "${BUILD_OWRXCONNECTOR:-}" == "y" ] || [ "${BUILD_CSDR_ETI:-}" == "y" ] || [ "${BUILD_CWSKIMMER:-}" == "y" ]; then
+if [ "${BUILD_PYCSDR:-}" == "y" ] || [ "${BUILD_OWRXCONNECTOR:-}" == "y" ] || [ "${BUILD_CSDR_ETI:-}" == "y" ] || [ "${BUILD_SKIMMER:-}" == "y" ]; then
   export BUILD_CSDR=y
 fi
 if [ "${BUILD_ACARSDEC:-}" == 'y' ]; then
@@ -53,7 +53,8 @@ colorify "${BUILD_SOAPYSDRPLAY3:-n}" SoapySDRPlay3
 colorify "${BUILD_ACARSDEC:-n}" AcarsDec
 colorify "${BUILD_LIBACARS:-n}" LibAcars
 colorify "${BUILD_NRSC5:-n}" nrsc5
-colorify "${BUILD_CWSKIMMER:-n}" cwskimmer
+colorify "${BUILD_SKIMMER:-n}" skimmer
+colorify "${BUILD_DUMP978:-n}" dump978
 colorify "${BUILD_DREAM:-n}" dream
 
 sleep 3
