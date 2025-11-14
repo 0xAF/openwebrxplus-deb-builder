@@ -11,7 +11,32 @@ if [ "${BUILD_DREAM:-}" == "y" ]; then
 	apt remove --autoremove --purge -y libsndfile1-dev libqwt-qt5-dev libasound2-dev libgps-dev libqt5svg5-dev
 	log suc "Building dream..."
 	git clone -b main "$GIT_DREAM"
+	# show cloned commit hash (full + short)
+	if git -C dream rev-parse --verify HEAD >/dev/null 2>&1; then
+		echo "dream commit: $(git -C dream rev-parse HEAD) ($(git -C dream rev-parse --short HEAD))"
+	else
+		echo "Unable to determine dream commit hash"
+	fi
+
 	pushd dream
+
+	timestamp="$(LC_TIME=C date '+%a, %d %b %Y %T %z')"
+	yyyymmdd=$(date +%Y%m%d)
+	changelog_message="dream (2.2-$yyyymmdd) unstable; urgency=medium
+
+  * Packaged by LZ2SLL - Stanislav Lechev (0xAF)
+
+ -- Stanislav Lechev <af@0xAF.org>  $timestamp
+
+"
+	mkdir -p debian
+	tmpfile="$(mktemp /tmp/changelog.XXXXXX)" || tmpfile="/tmp/changelog.$$"
+	printf '%s' "$changelog_message" > "$tmpfile"
+	if [ -f debian/changelog ]; then
+		cat debian/changelog >> "$tmpfile"
+	fi
+	mv "$tmpfile" debian/changelog
+
 	echo 10 > debian/compat
 	# we can skip these overrides below as we are passing -d flag to dpkg-buildpackage
 	#sed -i 's/qt5-default, //g' debian/control
