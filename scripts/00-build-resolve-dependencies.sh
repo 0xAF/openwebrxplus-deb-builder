@@ -20,7 +20,7 @@ fi
 if [ "${BUILD_PYCSDR:-}" == "y" ] || [ "${BUILD_OWRXCONNECTOR:-}" == "y" ] || [ "${BUILD_CSDR_ETI:-}" == "y" ] || [ "${BUILD_SKIMMER:-}" == "y" ]; then
   export BUILD_CSDR=y
 fi
-if [ "${BUILD_ACARSDEC:-}" == 'y' ]; then
+if [ "${BUILD_ACARSDEC:-}" == 'y' ] || [ "${BUILD_DUMPHFDL:-}" == "y" ] || [ "${BUILD_DUMPVDL2:-}" == "y" ]; then
   export BUILD_LIBACARS=y
 fi
 
@@ -40,6 +40,7 @@ colorify() {
 log log "Building:"
 colorify "${BUILD_OWRX:-n}" OpenWebRx
 colorify "${BUILD_CSDR:-n}" csdr
+colorify "${BUILD_APRS_SYMBOLS:-n}" aprs-symbols
 colorify "${BUILD_PYCSDR:-n}" pycsdr
 colorify "${BUILD_OWRXCONNECTOR:-n}" OWRX-Connector
 colorify "${BUILD_CODECSERVER:-n}" Codec-Server
@@ -55,6 +56,10 @@ colorify "${BUILD_LIBACARS:-n}" LibAcars
 colorify "${BUILD_NRSC5:-n}" nrsc5
 colorify "${BUILD_SKIMMER:-n}" skimmer
 colorify "${BUILD_DUMP978:-n}" dump978
+colorify "${BUILD_DUMP1090:-n}" dump1090
+colorify "${BUILD_DUMPHFDL:-n}" dumphfdl
+colorify "${BUILD_DUMPVDL2:-n}" dumpvdl2
+colorify "${BUILD_HPSDR:-n}" hpsdr
 colorify "${BUILD_DREAM:-n}" dream
 
 sleep 3

@@ -5,7 +5,7 @@ set -euo pipefail
 # shellcheck disable=SC1091
 source /build.env
 
-: "${GIT_DUMP978:=https://github.com/flightaware/dump978}"
+: "${GIT_DUMP978:=https://github.com/luarvique/dump978}"
 
 if [ "${BUILD_DUMP978:-}" == "y" ]; then
 	apt install -y \

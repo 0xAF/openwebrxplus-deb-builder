@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# read and export dependencies
+# shellcheck disable=SC1091
+source /build.env
+
+: "${GIT_DUMP1090:=https://github.com/jketterl/dump1090}"
+
+if [ "${BUILD_DUMP1090:-}" == "y" ]; then
+	apt install -y \
+		libboost-system-dev \
+		libboost-program-options-dev \
+		libboost-regex-dev \
+		libboost-filesystem-dev \
+		libsoapysdr-dev \
+		libbladerf-dev libhackrf-dev liblimesuite-dev libncurses5-dev
+	log suc "Building dump1090..."
+	git clone -b master "$GIT_DUMP1090"
+
+	pushd dump1090
+
+	if grep -q " -Wno-error=calloc-transposed-args" Makefile; then
+		:
+	elif grep -q "^DUMP1090_CFLAGS := " Makefile; then
+		sed -i '0,/^DUMP1090_CFLAGS := /s//&-Wno-error=calloc-transposed-args /' Makefile
+	else
+		log err "target line not found"
+		exit 1
+	fi
+
+	#dpkg-buildpackage -us -uc -Pcustom,rtlsdr,hackrf,limesdr
+	dpkg-buildpackage -us -uc
+	popd
+
+	# copy debs to the output folder
+	cp ./*.deb "${OUTPUT_DIR}/"
+
+	# clean
+	rm -rf ./*.deb dump1090
+fi
