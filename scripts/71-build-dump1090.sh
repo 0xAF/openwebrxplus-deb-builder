@@ -5,7 +5,7 @@ set -euo pipefail
 # shellcheck disable=SC1091
 source /build.env
 
-: "${GIT_DUMP1090:=https://github.com/jketterl/dump1090}"
+: "${GIT_DUMP1090:=https://github.com/openwebrx/dump1090-debian}"
 
 if [ "${BUILD_DUMP1090:-}" == "y" ]; then
 	apt install -y \
@@ -16,9 +16,9 @@ if [ "${BUILD_DUMP1090:-}" == "y" ]; then
 		libsoapysdr-dev \
 		libbladerf-dev libhackrf-dev liblimesuite-dev libncurses5-dev
 	log suc "Building dump1090..."
-	git clone -b master "$GIT_DUMP1090"
+	git clone -b debian/bullseye "$GIT_DUMP1090"
 
-	pushd dump1090
+	pushd dump1090-debian
 
 	if grep -q " -Wno-error=calloc-transposed-args" Makefile; then
 		:
@@ -29,6 +29,11 @@ if [ "${BUILD_DUMP1090:-}" == "y" ]; then
 		exit 1
 	fi
 
+	popd
+
+	tar czf dump1090-fa_8.2.orig.tar.gz dump1090-debian/
+
+	pushd dump1090-debian
 	#dpkg-buildpackage -us -uc -Pcustom,rtlsdr,hackrf,limesdr
 	dpkg-buildpackage -us -uc
 	popd
@@ -37,5 +42,5 @@ if [ "${BUILD_DUMP1090:-}" == "y" ]; then
 	cp ./*.deb "${OUTPUT_DIR}/"
 
 	# clean
-	rm -rf ./*.deb dump1090
+	rm -rf ./*.deb dump1090-debian dump1090-fa_8.2.orig.tar.gz
 fi
