@@ -86,6 +86,8 @@ BUILD_LIBACARS=n
 BUILD_ACARSDEC=n
 BUILD_NRSC5=n
 
+NEEDS_SDRPLAY=n
+
 # If you are going to push the builder image to dockerhub,
 # you should set your username and use 'docker login' command.
 # If you do not know what this is, do not touch these variables.

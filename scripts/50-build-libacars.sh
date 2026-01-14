@@ -13,7 +13,7 @@ if [ "${BUILD_LIBACARS:-}" == "y" ]; then
 
   git clone "$GIT_LIBACARS"
 	pushd libacars
-    git checkout 3147aa0857b6d0fb8989b27445ce46278cb4bae8
+    # git checkout 3147aa0857b6d0fb8989b27445ce46278cb4bae8
     patch -p1 < /scripts/patches/libacars-2.2.0-4.patch
     dpkg-buildpackage -b -rfakeroot -us -uc
 	popd

@@ -51,8 +51,8 @@ colorify "${BUILD_PYCSDR_ETI:-n}" pycsdr-eti
 colorify "${BUILD_JS8PY:-n}" js8py
 colorify "${BUILD_REDSEA:-n}" redsea
 colorify "${BUILD_SOAPYSDRPLAY3:-n}" SoapySDRPlay3
-colorify "${BUILD_ACARSDEC:-n}" AcarsDec
 colorify "${BUILD_LIBACARS:-n}" LibAcars
+colorify "${BUILD_ACARSDEC:-n}" AcarsDec
 colorify "${BUILD_NRSC5:-n}" nrsc5
 colorify "${BUILD_SKIMMER:-n}" skimmer
 colorify "${BUILD_DUMP978:-n}" dump978
@@ -61,6 +61,7 @@ colorify "${BUILD_DUMPHFDL:-n}" dumphfdl
 colorify "${BUILD_DUMPVDL2:-n}" dumpvdl2
 colorify "${BUILD_HPSDR:-n}" hpsdr
 colorify "${BUILD_DREAM:-n}" dream
+colorify "${BUILD_SONDE:-n}" sonde
 
 sleep 3
 
