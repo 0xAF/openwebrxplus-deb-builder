@@ -62,6 +62,7 @@ colorify "${BUILD_DUMPVDL2:-n}" dumpvdl2
 colorify "${BUILD_HPSDR:-n}" hpsdr
 colorify "${BUILD_DREAM:-n}" dream
 colorify "${BUILD_SONDE:-n}" sonde
+colorify "${BUILD_RTL433:-n}" rtl433
 
 sleep 3
 

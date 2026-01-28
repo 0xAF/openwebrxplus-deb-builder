@@ -29,7 +29,6 @@ SONDE_BINARIES=(
 if [ "${BUILD_SONDE:-}" == "y" ]; then
 	log suc "Building sonde decoders..."
 	export DEBIAN_FRONTEND=noninteractive
-	apt-get update
 	apt-get install -y --no-install-recommends \
 		build-essential \
 		debhelper \
@@ -70,13 +69,13 @@ ${PKG_NAME} (${pkg_version}) unstable; urgency=medium
 
   * Automated build from ${GIT_SONDE}
 
- -- OpenWebRX Builder <builder@openwebrx>  ${changelog_date}
+ -- OpenWebRX DEB Builder <builder@openwebrx>  ${changelog_date}
 EOF
 	cat > "${debian_dir}/control" <<'EOF'
 Source: sonde-decoders
 Section: hamradio
 Priority: optional
-Maintainer: OpenWebRX Builder <builder@openwebrx>
+Maintainer: OpenWebRX DEB Builder <builder@openwebrx>
 Build-Depends: debhelper (>= 13)
 Standards-Version: 4.6.2
 Homepage: https://github.com/projecthorus/radiosonde_auto_rx
