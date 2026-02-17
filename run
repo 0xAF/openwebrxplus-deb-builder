@@ -10,6 +10,24 @@ APT_PROXY="http://$(ip -o route get to 8.8.8.8 | sed -n 's/.*src \([0-9.]\+\).*/
 
 HAS_DOCKER=$(docker -v 2>/dev/null || false)
 HAS_BUILDX=$(docker buildx version 2>/dev/null || false)
+TMUX_ACTIVE=0
+if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
+  TMUX_ACTIVE=1
+fi
+
+restore_tmux_window() {
+  if [ "${TMUX_ACTIVE}" -eq 1 ]; then
+    tmux set-option -w automatic-rename on >/dev/null 2>&1
+  fi
+}
+
+handle_interrupt() {
+  log war "Interrupted by user, restoring tmux window name..."
+  restore_tmux_window
+  exit 130
+}
+
+trap handle_interrupt INT
 
 start-apt-cache() {
   cd "${CWD}"/apt-cache || exit 1
@@ -170,11 +188,14 @@ build() {
     fi
 		# IMAGE_TAG=$(echo "${file}" | sed -e 's/^docker\/Dockerfile-//' )
 		IMAGE_TAG=$tag
-		for arch in "${ARCHITECTURES[@]}"; do
-			distro=$(echo "${IMAGE_TAG}" | cut -d '-' -f 1)
-			release=$(echo "${IMAGE_TAG}" | cut -d '-' -f 2)
-			log inf "running [4[${distro}]] [6[${release}]] build for [5[${arch}]]"
-			mkdir -p "owrx/${distro}/${release}/${arch}"
+    for arch in "${ARCHITECTURES[@]}"; do
+      distro=$(echo "${IMAGE_TAG}" | cut -d '-' -f 1)
+      release=$(echo "${IMAGE_TAG}" | cut -d '-' -f 2)
+      log inf "running [4[${distro}]] [6[${release}]] build for [5[${arch}]]"
+      if [ "${TMUX_ACTIVE}" -eq 1 ]; then
+        tmux rename-window "${distro}/${release}/${arch}"
+      fi
+      mkdir -p "owrx/${distro}/${release}/${arch}"
 			time docker run -it --rm --platform "linux/${arch}" \
 				--name "owrx-build-${IMAGE_TAG}" \
         -e APT_PROXY="${APT_PROXY}" \
@@ -184,8 +205,10 @@ build() {
         -v "${CWD}/settings.env:/settings.env" \
         -v "${CWD}/scripts:/scripts" \
 				"${REGISTRYUSER}/${IMAGE_NAME}:${IMAGE_TAG}"
-		done
-	done
+    done
+  done
+
+  restore_tmux_window
 
 }
 
