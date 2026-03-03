@@ -12,7 +12,7 @@ if [ "${BUILD_PYCSDR_ETI:-}" == "y" ]; then
 	log suc "Building PyCSDR-ETI..."
 	git clone "$GIT_PYCSDR_ETI"
 	pushd pycsdr-eti
-	dpkg-buildpackage -us -uc
+	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
 	popd
 	# Not installing PyCSDR-ETI here since there are no further
 	# build steps depending on it

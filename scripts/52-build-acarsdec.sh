@@ -16,7 +16,7 @@ if [ "${BUILD_ACARSDEC:-}" == "y" ]; then
 	pushd acarsdec
 		#git checkout 7920079b8e005c6c798bd478a513211daf9bbd25
 		#patch -p1 < /scripts/patches/acarsdec-3.7.patch
-		dpkg-buildpackage -b -rfakeroot -us -uc
+		dpkg-buildpackage -b -rfakeroot -us -uc -j"$(nproc --ignore=4)"
 	popd
 
 	# copy debs to the output folder

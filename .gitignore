@@ -1,4 +1,6 @@
+logs/
 owrx/
 .vscode/
 settings.env
 .shellcheckrc
+*remove_me*

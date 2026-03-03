@@ -15,7 +15,7 @@ if [ "${BUILD_LIBACARS:-}" == "y" ]; then
 	pushd libacars
     # git checkout 3147aa0857b6d0fb8989b27445ce46278cb4bae8
     patch -p1 < /scripts/patches/libacars-2.2.0-4.patch
-    dpkg-buildpackage -b -rfakeroot -us -uc
+    dpkg-buildpackage -b -rfakeroot -us -uc -j"$(nproc --ignore=4)"
 	popd
 
 	# Install debs, so the next packages can use it.

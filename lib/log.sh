@@ -50,6 +50,18 @@ function log() {
   # printf -v right "| %-20.20s" "${BASH_SOURCE[1]}:${BASH_LINENO[1]}:${FUNCNAME[1]}"
   local filename
   filename=$(basename "${BASH_SOURCE[1]}")
+  local cols
+  cols=120
+  if [ -n "${COLUMNS:-}" ] && [[ "${COLUMNS}" =~ ^[0-9]+$ ]] && [ "${COLUMNS}" -gt 0 ]; then
+    cols="${COLUMNS}"
+  elif command -v tput >/dev/null 2>&1; then
+    local tput_cols
+    tput_cols=$(tput cols 2>/dev/null || true)
+    if [[ "${tput_cols}" =~ ^[0-9]+$ ]] && [ "${tput_cols}" -gt 0 ]; then
+      cols="${tput_cols}"
+    fi
+  fi
+
   printf -v right "| %-1b |" "${filename}:${BASH_LINENO[1]}"
-  printf "\r%*b\r%b   \b\b\b\n" "$(tput cols)" "$right" "$out";
+  printf "\r%*b\r%b   \b\b\b\n" "${cols}" "$right" "$out";
 }

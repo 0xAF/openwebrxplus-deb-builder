@@ -14,7 +14,7 @@ if [ "${BUILD_CODECSERVER:-}" == "y" ]; then
 	log suc "Building CodecServer..."
 	git clone -b master "$GIT_CODECSERVER"
 	pushd codecserver
-	dpkg-buildpackage -us -uc
+	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
 	popd
 	# Digiham depends on libcodecserver-dev
 	dpkg -i libcodecserver_*.deb codecserver_*.deb libcodecserver-dev_*.deb

@@ -12,7 +12,7 @@ if [ "${BUILD_JS8PY:-}" == "y" ]; then
 	log suc "Building JS8Py..."
 	git clone -b master "$GIT_JS8PY"
 	pushd js8py
-	dpkg-buildpackage -us -uc
+	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
 	popd
 	# Not installing JS8Py here since there are no further
 	# build steps depending on it

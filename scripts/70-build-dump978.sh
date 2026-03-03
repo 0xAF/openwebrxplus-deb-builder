@@ -18,7 +18,7 @@ if [ "${BUILD_DUMP978:-}" == "y" ]; then
 	git clone -b master "$GIT_DUMP978"
 
 	pushd dump978
-	dpkg-buildpackage -us -uc
+	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
 	popd
 
 	# copy debs to the output folder

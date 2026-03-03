@@ -22,7 +22,7 @@ if [ "${BUILD_HPSDR:-}" == "y" ]; then
 
 	tar czf hpsdrconnector_0.6.1.orig.tar.gz hpsdrconnector-debian/
 	pushd hpsdrconnector-debian
-	dpkg-buildpackage -us -uc
+	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
 	popd
 
 	# copy debs to the output folder

@@ -16,7 +16,7 @@ if [ "${BUILD_CSDR:-}" == "y" ]; then
 		# fix armhf builds on gcc>=11 (bookworm)
 		sed -i 's/-march=armv7-a /-march=armv7-a+fp /g' CMakeLists.txt
 	fi
-	dpkg-buildpackage -us -uc
+	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
 	cd /
 
 	# Install debs, so the next packages can use it.

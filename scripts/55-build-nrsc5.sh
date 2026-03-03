@@ -13,7 +13,7 @@ if [ "${BUILD_NRSC5:-}" == "y" ]; then
 	log suc "Building nrsc5..."
 	git clone "$GIT_NRSC5"
 	pushd nrsc5
-	dpkg-buildpackage -b -rfakeroot -us -uc
+	dpkg-buildpackage -b -rfakeroot -us -uc -j"$(nproc --ignore=4)"
 	popd
 
 	# copy debs to the output folder

@@ -15,7 +15,7 @@ if [ "${BUILD_RTL433:-}" == "y" ]; then
 	git clone -b master "$GIT_RTL433"
 	pushd rtl-433
 	# dpkg-buildpackage -us -uc
-	gbp buildpackage --git-ignore-branch -us -uc 
+	gbp buildpackage --git-ignore-branch -us -uc
 	popd
 
 	# copy debs to the output folder

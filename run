@@ -4,7 +4,12 @@ cd "${CWD}" || exit 1
 # shellcheck source=./lib/log.sh
 source "${CWD}"/lib/log.sh
 
-# to use APT proxy, run: ./image start-apt-cache
+SETTINGS_FILE="settings.env"
+SETTINGS_PATH="${CWD}/${SETTINGS_FILE}"
+RUN_ID="$(date +%Y%m%d-%H%M%S)-$$"
+LOG_DIR="${CWD}/logs/run-parallel-${RUN_ID}"
+
+# to use APT proxy, run: ./run-parallel start-apt-cache
 APT_PROXY=
 APT_PROXY="http://$(ip -o route get to 8.8.8.8 | sed -n 's/.*src \([0-9.]\+\).*/\1/p'):3142"
 
@@ -15,19 +20,108 @@ if [ -n "${TMUX:-}" ] && command -v tmux >/dev/null 2>&1; then
   TMUX_ACTIVE=1
 fi
 
+ACTIVE_CONTAINERS=()
+ACTIVE_PIDS=()
+CLEANUP_DONE=0
+NEXT_COLOR_INDEX=0
+TMUX_UI_MODE=0
+ACTIVE_TMUX_WINDOWS=()
+TMUX_UI_WINDOW=""
+BUILD_TMUX_WINDOW=""
+TMUX_UI_PANES_STARTED=0
+
+declare -A TOKEN_COLORS=()
+TOKEN_COLOR_PALETTE=(
+  $'\033[31m' $'\033[32m' $'\033[33m' $'\033[34m' $'\033[35m' $'\033[36m'
+  $'\033[91m' $'\033[92m' $'\033[93m' $'\033[94m' $'\033[95m' $'\033[96m'
+)
+TOKEN_COLOR_RESULT=""
+FORMAT_JOB_PREFIX_RESULT=""
+
 restore_tmux_window() {
   if [ "${TMUX_ACTIVE}" -eq 1 ]; then
-    tmux set-option -w automatic-rename on >/dev/null 2>&1
+    if [ -n "${BUILD_TMUX_WINDOW}" ]; then
+      tmux set-option -w -t "${BUILD_TMUX_WINDOW}" automatic-rename on >/dev/null 2>&1 || true
+    else
+      tmux set-option -w automatic-rename on >/dev/null 2>&1
+    fi
   fi
 }
 
-handle_interrupt() {
-  log war "Interrupted by user, restoring tmux window name..."
+set_build_tmux_window() {
+  if [ "${TMUX_ACTIVE}" -ne 1 ]; then
+    BUILD_TMUX_WINDOW=""
+    return
+  fi
+
+  BUILD_TMUX_WINDOW="$(tmux display-message -p '#{window_id}' 2>/dev/null || true)"
+  if [ -n "${BUILD_TMUX_WINDOW}" ]; then
+    tmux set-option -w -t "${BUILD_TMUX_WINDOW}" automatic-rename off >/dev/null 2>&1 || true
+  fi
+}
+
+rename_build_tmux_window() {
+  local title="$1"
+  if [ "${TMUX_ACTIVE}" -ne 1 ]; then
+    return
+  fi
+
+  if [ -n "${BUILD_TMUX_WINDOW}" ]; then
+    tmux rename-window -t "${BUILD_TMUX_WINDOW}" "${title}" >/dev/null 2>&1 || true
+  else
+    tmux rename-window "${title}" >/dev/null 2>&1 || true
+  fi
+}
+
+cleanup_running_jobs() {
+  if [ ${#ACTIVE_CONTAINERS[@]} -gt 0 ]; then
+    log war "Stopping active containers..."
+    for container in "${ACTIVE_CONTAINERS[@]}"; do
+      docker rm -f "${container}" >/dev/null 2>&1 || true
+    done
+  fi
+
+  if [ ${#ACTIVE_PIDS[@]} -gt 0 ]; then
+    for pid in "${ACTIVE_PIDS[@]}"; do
+      kill "${pid}" >/dev/null 2>&1 || true
+    done
+    wait "${ACTIVE_PIDS[@]}" 2>/dev/null || true
+  fi
+
+  ACTIVE_CONTAINERS=()
+  ACTIVE_PIDS=()
+}
+
+cleanup_tmux_windows() {
+  if [ "${TMUX_ACTIVE}" -ne 1 ]; then
+    return
+  fi
+
+  for window in "${ACTIVE_TMUX_WINDOWS[@]}"; do
+    tmux kill-window -t "${window}" >/dev/null 2>&1 || true
+  done
+
+  ACTIVE_TMUX_WINDOWS=()
+  TMUX_UI_WINDOW=""
+}
+
+handle_exit() {
+  if [ "${CLEANUP_DONE}" -eq 1 ]; then
+    return
+  fi
+  CLEANUP_DONE=1
+  cleanup_running_jobs
+  cleanup_tmux_windows
   restore_tmux_window
+}
+
+handle_interrupt() {
+  log war "Interrupted by user..."
   exit 130
 }
 
-trap handle_interrupt INT
+trap handle_interrupt INT TERM
+trap handle_exit EXIT
 
 start-apt-cache() {
   cd "${CWD}"/apt-cache || exit 1
@@ -60,9 +154,25 @@ check-docker() {
   fi
 }
 
+has_enabled_builds() {
+  local var_name
+  local value
+
+  for var_name in $(compgen -A variable BUILD_); do
+    value="${!var_name:-n}"
+    case "${value,,}" in
+      y|yes|1|true)
+        return 0
+        ;;
+    esac
+  done
+
+  return 1
+}
+
 settings() {
-  if [ ! -f ./settings.env ]; then
-    cat > settings.env << __EOF__
+  if [ ! -f "./${SETTINGS_FILE}" ]; then
+    cat > "${SETTINGS_FILE}" << __EOF__
 # Settings file for the openwebrx-deb-builder
 # shellcheck disable=SC2148,SC2034 shell=bash
 
@@ -95,6 +205,7 @@ BUILD_HPSDR=n
 BUILD_DREAM=n
 BUILD_SONDE=n
 BUILD_RTL433=n
+BUILD_RADAE=n
 
 BUILD_SOAPYSDRPLAY3=n
 BUILD_CODECSERVER=n
@@ -119,21 +230,21 @@ IMAGE_NAME="openwebrxplus-deb-builder"
 # vim: set ft=sh
 __EOF__
   fi
-	${EDITOR:-vim} ./settings.env
+
+  ${EDITOR:-vim} "./${SETTINGS_FILE}"
 }
 
-
 create() {
-	source ./settings.env
-	if [ "${PUSH_TO_DOCKERHUB:-}" == "y" ]; then DOCKER_PUSH='--push'; else DOCKER_PUSH='--load'; fi
+  source "./${SETTINGS_FILE}"
+  if [ "${PUSH_TO_DOCKERHUB:-}" == "y" ]; then DOCKER_PUSH='--push'; else DOCKER_PUSH='--load'; fi
   if [ ${#ARCHITECTURES[@]} -gt 1 ] && [ "${PUSH_TO_DOCKERHUB:-}" != "y" ]; then
     log err "Creating multi-arch builders is supported only if you push to docker hub. Reduce to one arch only if you are going to create a builder locally."
     exit 1
   fi
-	log inf "Creating builders with Docker/BuildX"
-	docker buildx create --name owrxp-builder --driver docker-container --bootstrap --use --driver-opt network=host || true
+  log inf "Creating builders with Docker/BuildX"
+  docker buildx create --name owrxp-builder --driver docker-container --bootstrap --use --driver-opt network=host || true
 
-	for file in docker/Dockerfile*; do
+  for file in docker/Dockerfile*; do
     tag="${file##*/}"
     tag="${tag#Dockerfile-}"
     in_list=false
@@ -147,32 +258,170 @@ create() {
       log inf "Skipping ${tag} (not in DISTROS)"
       continue
     fi
-		# IMAGE_TAG=$(echo "${file}" | sed -e 's/^docker\/Dockerfile-//' )
-		IMAGE_TAG=$tag
-		log inf "Creating builders for [6[${IMAGE_TAG}]]"
 
-		PLATFORMS=""
-		for arch in "${ARCHITECTURES[@]}"; do
-			PLATFORMS="${PLATFORMS},linux/$arch"
-		done
-		PLATFORMS=$(echo "${PLATFORMS}" | cut -c2-)
+    IMAGE_TAG=$tag
+    log inf "Creating builders for [6[${IMAGE_TAG}]]"
 
-		log inf "[6[${IMAGE_TAG}]] creating builders for [5[${PLATFORMS}]]"
-		time docker buildx build \
+    PLATFORMS=""
+    for arch in "${ARCHITECTURES[@]}"; do
+      PLATFORMS="${PLATFORMS},linux/$arch"
+    done
+    PLATFORMS=$(echo "${PLATFORMS}" | cut -c2-)
+
+    log inf "[6[${IMAGE_TAG}]] creating builders for [5[${PLATFORMS}]]"
+    time docker buildx build \
       --tag "${REGISTRYUSER}/${IMAGE_NAME}:${IMAGE_TAG}" \
       --platform "${PLATFORMS}" \
       ${DOCKER_PUSH} \
       -f "${file}" \
-		.
-	done
+      .
+  done
 
-	docker buildx rm --keep-state owrxp-builder
+  docker buildx rm --keep-state owrxp-builder
 }
 
-build() {
-	source ./settings.env
-	log inf "Building packages with Docker/BuildX"
-	for file in docker/Dockerfile*; do
+sanitize_name() {
+  local value="$1"
+  value="${value//\//-}"
+  value="${value//:/-}"
+  value="${value//./-}"
+  echo "${value}"
+}
+
+makeflags_for_wave() {
+  local wave_jobs="$1"
+  local host_cores base_jobs usable host_jobs
+  local base_makeflags effective_jobs remainder
+
+  host_cores=$(nproc)
+  base_makeflags="${MAKEFLAGS:-}"
+  usable=$((host_cores - 4))
+  if [ "${usable}" -lt 1 ]; then
+    usable=1
+  fi
+
+  base_jobs=${usable}
+  if [[ "${base_makeflags}" =~ -j([0-9]+) ]]; then
+    base_jobs="${BASH_REMATCH[1]}"
+  fi
+
+  host_jobs=$((usable / wave_jobs))
+  if [ "${host_jobs}" -lt 1 ]; then
+    host_jobs=1
+  fi
+
+  if [ "${base_jobs}" -lt "${host_jobs}" ]; then
+    effective_jobs="${base_jobs}"
+  else
+    effective_jobs="${host_jobs}"
+  fi
+
+  remainder=$(echo "${base_makeflags}" | sed -E 's/(^|[[:space:]])-j[0-9]+([[:space:]]|$)/ /g' | xargs)
+  if [ -n "${remainder}" ]; then
+    echo "-j${effective_jobs} ${remainder}"
+  else
+    echo "-j${effective_jobs}"
+  fi
+}
+
+wait_wave() {
+  local -n pids_ref=$1
+  local -n labels_ref=$2
+  local -n logs_ref=$3
+  local remaining_pids=()
+  local finished_pid
+  local status
+  local i
+  local found_index
+
+  remaining_pids=("${pids_ref[@]}")
+
+  while [ ${#remaining_pids[@]} -gt 0 ]; do
+    finished_pid=""
+    if wait -n -p finished_pid "${remaining_pids[@]}"; then
+      status=0
+    else
+      status=$?
+    fi
+
+    found_index=-1
+    for i in "${!pids_ref[@]}"; do
+      if [ "${pids_ref[$i]}" = "${finished_pid}" ]; then
+        found_index=$i
+        break
+      fi
+    done
+
+    if [ "${found_index}" -lt 0 ]; then
+      log err "Unexpected wait state while tracking parallel jobs."
+      cleanup_running_jobs
+      WAVE_FAILED=("unknown")
+      return 1
+    fi
+
+    if [ "${status}" -ne 0 ]; then
+      log err "Failed: ${labels_ref[$found_index]} (log: ${logs_ref[$found_index]})"
+      log war "Fail-fast: stopping remaining jobs in this wave."
+      cleanup_running_jobs
+      WAVE_FAILED=("${labels_ref[$found_index]}")
+      return 1
+    fi
+
+    log inf "Done: ${labels_ref[$found_index]}"
+
+    next_remaining_pids=()
+    for pid in "${remaining_pids[@]}"; do
+      if [ "${pid}" != "${finished_pid}" ]; then
+        next_remaining_pids+=("${pid}")
+      fi
+    done
+    remaining_pids=("${next_remaining_pids[@]}")
+  done
+
+  WAVE_FAILED=()
+  return 0
+}
+
+token_color_for() {
+  local token="$1"
+  local palette_size
+  local assigned_color
+
+  if [ -n "${TOKEN_COLORS[${token}]:-}" ]; then
+    TOKEN_COLOR_RESULT="${TOKEN_COLORS[${token}]}"
+    return 0
+  fi
+
+  palette_size=${#TOKEN_COLOR_PALETTE[@]}
+  assigned_color="${TOKEN_COLOR_PALETTE[$((NEXT_COLOR_INDEX % palette_size))]}"
+  TOKEN_COLORS["${token}"]="${assigned_color}"
+  NEXT_COLOR_INDEX=$((NEXT_COLOR_INDEX + 1))
+  TOKEN_COLOR_RESULT="${assigned_color}"
+}
+
+format_job_prefix() {
+  local distro="$1"
+  local release="$2"
+  local arch="$3"
+  local reset=$'\033[0m'
+  local distro_color release_color arch_color
+
+  token_color_for "${distro}"
+  distro_color="${TOKEN_COLOR_RESULT}"
+  token_color_for "${release}"
+  release_color="${TOKEN_COLOR_RESULT}"
+  token_color_for "${arch}"
+  arch_color="${TOKEN_COLOR_RESULT}"
+
+  printf -v FORMAT_JOB_PREFIX_RESULT "[%b/%b/%b] " \
+    "${distro_color}${distro}${reset}" \
+    "${release_color}${release}${reset}" \
+    "${arch_color}${arch}${reset}"
+}
+
+collect_selected_images() {
+  selected_images=()
+  for file in docker/Dockerfile*; do
     tag="${file##*/}"
     tag="${tag#Dockerfile-}"
     in_list=false
@@ -186,49 +435,439 @@ build() {
       log inf "Skipping ${tag} (not in DISTROS)"
       continue
     fi
-		# IMAGE_TAG=$(echo "${file}" | sed -e 's/^docker\/Dockerfile-//' )
-		IMAGE_TAG=$tag
-    for arch in "${ARCHITECTURES[@]}"; do
-      distro=$(echo "${IMAGE_TAG}" | cut -d '-' -f 1)
-      release=$(echo "${IMAGE_TAG}" | cut -d '-' -f 2)
-      log inf "running [4[${distro}]] [6[${release}]] build for [5[${arch}]]"
-      if [ "${TMUX_ACTIVE}" -eq 1 ]; then
-        tmux rename-window "${distro}/${release}/${arch}"
-      fi
-      mkdir -p "owrx/${distro}/${release}/${arch}"
-			time docker run -it --rm --platform "linux/${arch}" \
-				--name "owrx-build-${IMAGE_TAG}" \
+    selected_images+=("${tag}")
+  done
+}
+
+expected_dpkg_arch() {
+  local platform_arch="$1"
+  case "${platform_arch}" in
+    amd64|arm64|armhf)
+      echo "${platform_arch}"
+      ;;
+    *)
+      echo ""
+      ;;
+  esac
+}
+
+check_image_arch_match() {
+  local image_tag="$1"
+  local requested_arch="$2"
+  local expected_arch actual_arch image_ref
+  local preflight_cmd
+  local timeout_seconds
+  local preflight_pull
+
+  image_ref="${REGISTRYUSER}/${IMAGE_NAME}:${image_tag}"
+  expected_arch="$(expected_dpkg_arch "${requested_arch}")"
+  if [ -z "${expected_arch}" ]; then
+    log err "Unsupported requested architecture: ${requested_arch}"
+    return 1
+  fi
+
+  log inf "Preflight arch check: ${image_tag} linux/${requested_arch}"
+
+  timeout_seconds="${ARCH_PREFLIGHT_TIMEOUT:-90}"
+  preflight_pull="${ARCH_PREFLIGHT_PULL:-y}"
+
+  if [ "${preflight_pull}" != "n" ]; then
+    log inf "Ensuring image is available: ${image_ref} (linux/${requested_arch})"
+    if ! docker pull --platform "linux/${requested_arch}" "${image_ref}"; then
+      log err "Failed to pull ${image_ref} for linux/${requested_arch}"
+      return 1
+    fi
+  fi
+
+  preflight_cmd="docker run --rm --platform linux/${requested_arch} ${image_ref} /bin/sh -lc 'dpkg --print-architecture'"
+
+  if command -v timeout >/dev/null 2>&1; then
+    actual_arch="$({ timeout "${timeout_seconds}"s /bin/sh -lc "${preflight_cmd}"; } | tail -n1 | tr -d '\r')"
+  else
+    actual_arch="$({ /bin/sh -lc "${preflight_cmd}"; } | tail -n1 | tr -d '\r')"
+  fi
+
+  if [ -z "${actual_arch}" ]; then
+    log err "Unable to validate container architecture for ${image_ref} (requested ${requested_arch})."
+    if command -v timeout >/dev/null 2>&1; then
+      log err "Preflight check may have timed out after ${timeout_seconds}s. Set ARCH_PREFLIGHT_TIMEOUT to adjust."
+    fi
+    return 1
+  fi
+
+  if [ "${actual_arch}" != "${expected_arch}" ]; then
+    log err "Architecture mismatch for ${image_ref}: requested=${requested_arch}, container=${actual_arch}."
+    log err "Rebuild or repull this image for linux/${requested_arch} before running builds."
+    return 1
+  fi
+
+  log inf "Arch check OK: ${image_tag} linux/${requested_arch} -> ${actual_arch}"
+  return 0
+}
+
+preflight_wave_arch_checks() {
+  local wave_arch="$1"
+  local image_tag
+
+  for image_tag in "${selected_images[@]}"; do
+    if ! check_image_arch_match "${image_tag}" "${wave_arch}"; then
+      return 1
+    fi
+  done
+
+  return 0
+}
+
+start_wave_tmux_ui() {
+  local wave_arch="$1"
+  local ui_window_name
+  if [ "${TMUX_UI_MODE}" -ne 1 ]; then
+    return
+  fi
+
+  ui_window_name="owrx-${wave_arch}-${RUN_ID}"
+  TMUX_UI_WINDOW="$(tmux new-window -P -F '#{window_id}' -n "${ui_window_name}" 2>/dev/null || true)"
+  if [ -z "${TMUX_UI_WINDOW}" ]; then
+    return
+  fi
+  TMUX_UI_PANES_STARTED=0
+  ACTIVE_TMUX_WINDOWS+=("${TMUX_UI_WINDOW}")
+  tmux select-window -t "${TMUX_UI_WINDOW}" >/dev/null 2>&1 || true
+  tmux set-option -w -t "${TMUX_UI_WINDOW}" pane-border-status top >/dev/null 2>&1 || true
+  tmux set-option -w -t "${TMUX_UI_WINDOW}" pane-border-format '#{pane_title}' >/dev/null 2>&1 || true
+}
+
+add_wave_tmux_pane() {
+  local label="$1"
+  local logfile="$2"
+  local cmd pane_id
+
+  if [ "${TMUX_UI_MODE}" -ne 1 ]; then
+    return
+  fi
+
+  printf -v cmd "bash -lc %q" "printf '== ${label} ==\\n'; tail -n +1 -F ${logfile}"
+
+  if [ "${TMUX_UI_PANES_STARTED}" -eq 0 ]; then
+    pane_id=$(tmux list-panes -t "${TMUX_UI_WINDOW}" -F '#{pane_id}' | head -n1)
+    tmux respawn-pane -k -t "${pane_id}" "${cmd}" >/dev/null 2>&1 || true
+    tmux select-pane -t "${pane_id}" -T "${label}" >/dev/null 2>&1 || true
+    tmux select-pane -t "${pane_id}" -T "${label}" >/dev/null 2>&1 || true
+  else
+    pane_id=$(tmux split-window -P -F '#{pane_id}' -t "${TMUX_UI_WINDOW}" -v "${cmd}" 2>/dev/null || true)
+    if [ -n "${pane_id}" ]; then
+      tmux select-pane -t "${pane_id}" -T "${label}" >/dev/null 2>&1 || true
+    fi
+  fi
+
+  TMUX_UI_PANES_STARTED=$((TMUX_UI_PANES_STARTED + 1))
+
+  tmux select-layout -t "${TMUX_UI_WINDOW}" tiled >/dev/null 2>&1 || true
+}
+
+finish_wave_tmux_ui() {
+  local wave_arch="$1"
+  if [ "${TMUX_UI_MODE}" -ne 1 ]; then
+    return
+  fi
+
+  log inf "Completed tmux UI wave ${wave_arch}. Closing UI window."
+  tmux kill-window -t "${TMUX_UI_WINDOW}" >/dev/null 2>&1 || true
+
+  next_windows=()
+  for window in "${ACTIVE_TMUX_WINDOWS[@]}"; do
+    if [ "${window}" != "${TMUX_UI_WINDOW}" ]; then
+      next_windows+=("${window}")
+    fi
+  done
+  ACTIVE_TMUX_WINDOWS=("${next_windows[@]}")
+  TMUX_UI_WINDOW=""
+  TMUX_UI_PANES_STARTED=0
+}
+
+run_job() {
+  local image_tag="$1"
+  local arch="$2"
+  local wave_makeflags="$3"
+  local distro release label label_prefix container_name logfile
+
+  distro=$(echo "${image_tag}" | cut -d '-' -f 1)
+  release=$(echo "${image_tag}" | cut -d '-' -f 2)
+  label="${distro}/${release}/${arch}"
+  format_job_prefix "${distro}" "${release}" "${arch}"
+  label_prefix="${FORMAT_JOB_PREFIX_RESULT}"
+  container_name="owrx-build-$(sanitize_name "${image_tag}-${arch}-${RUN_ID}")"
+  logfile="${LOG_DIR}/${distro}-${release}-${arch}.log"
+
+  mkdir -p "owrx/${distro}/${release}/${arch}"
+  : > "${logfile}"
+  add_wave_tmux_pane "${label}" "${logfile}"
+
+  log inf "Starting ${label}"
+  (
+    set -o pipefail
+    if [ "${TMUX_UI_MODE}" -eq 1 ]; then
+      docker run --rm --platform "linux/${arch}" \
+        --name "${container_name}" \
         -e APT_PROXY="${APT_PROXY}" \
+        -e TERM="${TERM:-xterm-256color}" \
         -e OUTPUT_DIR="/output/${arch}" \
-        -e MAKEFLAGS="${MAKEFLAGS}" \
-				-v "${CWD}/owrx/${distro}/${release}/:/output" \
-        -v "${CWD}/settings.env:/settings.env" \
+        -e MAKEFLAGS="${wave_makeflags}" \
+        -v "${CWD}/owrx/${distro}/${release}/:/output" \
+        -v "${CWD}/lib/log.sh:/log.sh:ro" \
+        -v "${SETTINGS_PATH}:/settings.env" \
         -v "${CWD}/scripts:/scripts" \
-				"${REGISTRYUSER}/${IMAGE_NAME}:${IMAGE_TAG}"
+          "${REGISTRYUSER}/${IMAGE_NAME}:${image_tag}" \
+          2>&1 | tee "${logfile}" >/dev/null
+    else
+      docker run --rm --platform "linux/${arch}" \
+        --name "${container_name}" \
+        -e APT_PROXY="${APT_PROXY}" \
+        -e TERM="${TERM:-xterm-256color}" \
+        -e OUTPUT_DIR="/output/${arch}" \
+        -e MAKEFLAGS="${wave_makeflags}" \
+        -v "${CWD}/owrx/${distro}/${release}/:/output" \
+        -v "${CWD}/lib/log.sh:/log.sh:ro" \
+        -v "${SETTINGS_PATH}:/settings.env" \
+        -v "${CWD}/scripts:/scripts" \
+          "${REGISTRYUSER}/${IMAGE_NAME}:${image_tag}" \
+          2>&1 | awk -v prefix="${label_prefix}" '{ print prefix $0; fflush(); }' | tee "${logfile}"
+    fi
+  ) &
+
+  ACTIVE_PIDS+=("$!")
+  ACTIVE_CONTAINERS+=("${container_name}")
+  WAVE_PIDS+=("$!")
+  WAVE_LABELS+=("${label}")
+  WAVE_LOGS+=("${logfile}")
+}
+
+build_serial_interactive() {
+  local waves wave_arch arch_enabled configured_arch wave_jobs wave_status
+  local image_tag distro release label container_name
+
+  waves=(amd64 arm64 armhf)
+
+  if [ "${TMUX_ACTIVE}" -eq 1 ]; then
+    rename_build_tmux_window "serial-interactive"
+  fi
+
+  for wave_arch in "${waves[@]}"; do
+    arch_enabled=false
+    for configured_arch in "${ARCHITECTURES[@]}"; do
+      if [ "${configured_arch}" == "${wave_arch}" ]; then
+        arch_enabled=true
+        break
+      fi
+    done
+
+    if [ "${arch_enabled}" != true ]; then
+      continue
+    fi
+
+    wave_jobs=${#selected_images[@]}
+    if [ "${wave_jobs}" -eq 0 ]; then
+      continue
+    fi
+
+    if ! preflight_wave_arch_checks "${wave_arch}"; then
+      log err "Build stopped: preflight architecture checks failed for wave ${wave_arch}."
+      return 1
+    fi
+
+    if [ "${TMUX_ACTIVE}" -eq 1 ]; then
+      rename_build_tmux_window "serial-${wave_arch}"
+    fi
+    log inf "Serial interactive wave ${wave_arch}: ${wave_jobs} job(s)"
+
+    for image_tag in "${selected_images[@]}"; do
+      distro=$(echo "${image_tag}" | cut -d '-' -f 1)
+      release=$(echo "${image_tag}" | cut -d '-' -f 2)
+      label="${distro}/${release}/${wave_arch}"
+      container_name="owrx-build-$(sanitize_name "${image_tag}-${wave_arch}-${RUN_ID}-interactive")"
+
+      mkdir -p "owrx/${distro}/${release}/${wave_arch}"
+      log inf "Running interactive ${label}"
+
+      ACTIVE_CONTAINERS=("${container_name}")
+      time docker run -it --rm --platform "linux/${wave_arch}" \
+        --name "${container_name}" \
+        -e APT_PROXY="${APT_PROXY}" \
+        -e TERM="${TERM:-xterm-256color}" \
+        -e OUTPUT_DIR="/output/${wave_arch}" \
+        -e MAKEFLAGS="${MAKEFLAGS}" \
+        -v "${CWD}/owrx/${distro}/${release}/:/output" \
+        -v "${CWD}/lib/log.sh:/log.sh:ro" \
+        -v "${SETTINGS_PATH}:/settings.env" \
+        -v "${CWD}/scripts:/scripts" \
+        "${REGISTRYUSER}/${IMAGE_NAME}:${image_tag}"
+      wave_status=$?
+      ACTIVE_CONTAINERS=()
+
+      if [ "${wave_status}" -ne 0 ]; then
+        log err "Interactive build failed: ${label}"
+        return "${wave_status}"
+      fi
     done
   done
 
-  restore_tmux_window
+  return 0
+}
 
+build() {
+  local force_plain=0
+  local use_tmux_ui=0
+  local arg
+
+  for arg in "$@"; do
+    case "${arg}" in
+      build|"")
+        ;;
+      --plain)
+        force_plain=1
+        ;;
+      *)
+        log err "Unknown build option: ${arg}"
+        log war "Supported options: --plain"
+        return 2
+        ;;
+    esac
+  done
+
+  set_build_tmux_window
+  if [ "${TMUX_ACTIVE}" -eq 1 ] && [ "${force_plain}" -eq 0 ]; then
+    use_tmux_ui=1
+    TMUX_UI_MODE=1
+  else
+    TMUX_UI_MODE=0
+  fi
+
+  source "./${SETTINGS_FILE}"
+  if ! has_enabled_builds; then
+    log war "No packages selected (all BUILD_*=n in ${SETTINGS_FILE}). Running container startup test only."
+  fi
+  mkdir -p "${LOG_DIR}"
+  if [ "${use_tmux_ui}" -eq 1 ]; then
+    log inf "Building packages with Docker/BuildX (parallel tmux UI mode)"
+  else
+    log inf "Building packages with Docker/BuildX (parallel plain mode)"
+  fi
+  log inf "Settings: ${SETTINGS_FILE}"
+  log inf "Logs: ${LOG_DIR}"
+
+  collect_selected_images
+
+  waves=(amd64 arm64 armhf)
+
+  if [ "${TMUX_ACTIVE}" -eq 1 ]; then
+    if [ "${use_tmux_ui}" -eq 1 ]; then
+      rename_build_tmux_window "parallel-build-ui"
+    else
+      rename_build_tmux_window "parallel-build"
+    fi
+  fi
+
+  for wave_arch in "${waves[@]}"; do
+    arch_enabled=false
+    for configured_arch in "${ARCHITECTURES[@]}"; do
+      if [ "${configured_arch}" == "${wave_arch}" ]; then
+        arch_enabled=true
+        break
+      fi
+    done
+
+    if [ "${arch_enabled}" != true ]; then
+      continue
+    fi
+
+    wave_jobs=${#selected_images[@]}
+    if [ "${wave_jobs}" -eq 0 ]; then
+      continue
+    fi
+
+    if ! preflight_wave_arch_checks "${wave_arch}"; then
+      log err "Build stopped: preflight architecture checks failed for wave ${wave_arch}."
+      exit 1
+    fi
+
+    if [ "${use_tmux_ui}" -eq 1 ]; then
+      start_wave_tmux_ui "${wave_arch}"
+    fi
+
+    wave_makeflags="$(makeflags_for_wave "${wave_jobs}")"
+    if [ "${TMUX_ACTIVE}" -eq 1 ]; then
+      if [ "${use_tmux_ui}" -eq 1 ]; then
+        rename_build_tmux_window "wave-${wave_arch}-ui"
+      else
+        rename_build_tmux_window "wave-${wave_arch}"
+      fi
+    fi
+    log inf "Wave ${wave_arch}: starting ${wave_jobs} job(s) with MAKEFLAGS='${wave_makeflags}'"
+
+    WAVE_PIDS=()
+    WAVE_LABELS=()
+    WAVE_LOGS=()
+
+    for image_tag in "${selected_images[@]}"; do
+      run_job "${image_tag}" "${wave_arch}" "${wave_makeflags}"
+    done
+
+    if ! wait_wave WAVE_PIDS WAVE_LABELS WAVE_LOGS; then
+      if [ "${use_tmux_ui}" -eq 1 ]; then
+        finish_wave_tmux_ui "${wave_arch}"
+      fi
+      log err "Build stopped due to failure in wave ${wave_arch}."
+      exit 1
+    fi
+
+    ACTIVE_PIDS=()
+    ACTIVE_CONTAINERS=()
+    if [ "${use_tmux_ui}" -eq 1 ]; then
+      finish_wave_tmux_ui "${wave_arch}"
+    fi
+  done
+
+  log inf "All parallel waves completed successfully."
+}
+
+build-debug() {
+  set_build_tmux_window
+  source "./${SETTINGS_FILE}"
+  if ! has_enabled_builds; then
+    log war "No packages selected (all BUILD_*=n in ${SETTINGS_FILE}). Running container startup test only."
+  fi
+  mkdir -p "${LOG_DIR}"
+  log inf "Building packages with Docker/BuildX (serial interactive mode)"
+  log inf "Settings: ${SETTINGS_FILE}"
+  log inf "Logs: ${LOG_DIR}"
+
+  collect_selected_images
+
+  if ! build_serial_interactive; then
+    return $?
+  fi
+
+  log inf "Serial interactive build completed successfully."
 }
 
 ## MAIN
-log "Builder for OpenWebRX+ DEB Packages"
+log "Builder for OpenWebRX+ DEB Packages (parallel)"
 check-docker
 check-apt
 
 usage() {
   log war "Usage: $0 [command]"
   log war ". commands:"
-  log war "... [5[build]] - build DEB packages from settings"
-  log war "... [5[create]] - create docker builders"
-  log war "... [5[settings]] - create and/or edit settings"
+  log war "... [5[build]] - build DEB packages from settings-test.env"
+  log war "...... [6[--plain]] - force plain merged output even inside tmux"
+  log war "... [5[build-debug]] - run one container at a time with -it for debugging"
+  log war "... [5[create]] - create docker builders from settings-test.env"
+  log war "... [5[settings]] - create and/or edit settings-test.env"
   log war "... [5[start-apt-cache]] - to start apt-cache docker container"
   log war "... [5[stop-apt-cache]] - to stop apt-cache docker container"
   echo
   log war "NOTE: to clear the caches, you should remove the 'buildx' volume and the 'cache' folder."
 }
-
 
 if [[ $(type -t "$1") == 'function' ]]; then
   $1 "$@"
