@@ -6,7 +6,7 @@ set -euo pipefail
 source /build.env
 
 #: "${GIT_ACARSDEC:=https://github.com/TLeconte/acarsdec}"
-: "${GIT_ACARSDEC:=https://github.com/luarvique/acarsdec.git}"
+: "${GIT_ACARSDEC:=https://github.com/luarvique/acarsdec}"
 
 if [ "${BUILD_ACARSDEC:-}" == "y" ]; then
 	apt install -y libxml2-dev libjansson-dev libasound-dev libcjson-dev libpaho-mqtt-dev

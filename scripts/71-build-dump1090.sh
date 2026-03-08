@@ -35,7 +35,7 @@ if [ "${BUILD_DUMP1090:-}" == "y" ]; then
 
 	pushd dump1090-debian
 	#dpkg-buildpackage -us -uc -Pcustom,rtlsdr,hackrf,limesdr
-	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
+	dpkg-buildpackage -b -us -uc -j"$(nproc --ignore=4)"
 	popd
 
 	# copy debs to the output folder

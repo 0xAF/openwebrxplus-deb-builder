@@ -12,7 +12,7 @@ if [ "${BUILD_OWRX:-}" == "y" ]; then
 	log suc "Building OpenWebRX..."
 	git clone -b master "$GIT_OPENWEBRX"
 	pushd openwebrx
-	dpkg-buildpackage -us -uc
+	dpkg-buildpackage -b -us -uc
 	popd
 	# Not installing OpenWebRX here since there are no further
 	# build steps depending on it

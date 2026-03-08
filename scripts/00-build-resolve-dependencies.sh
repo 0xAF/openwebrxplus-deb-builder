@@ -64,6 +64,7 @@ colorify "${BUILD_DREAM:-n}" dream
 colorify "${BUILD_SONDE:-n}" sonde
 colorify "${BUILD_RTL433:-n}" rtl433
 colorify "${BUILD_RADAE:-n}" radae
+colorify "${BUILD_MULTIMON_NG:-n}" multimon-ng
 
 sleep 3
 

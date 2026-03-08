@@ -60,7 +60,7 @@ __EOF__
 	cd ..
 	tar czf dream_2.2.orig.tar.gz dream/
 	cd -
-	dpkg-buildpackage -us -uc -d -j"$(nproc --ignore=4)"
+	dpkg-buildpackage -b -us -uc -d -j"$(nproc --ignore=4)"
 	popd
 
 	# copy debs to the output folder

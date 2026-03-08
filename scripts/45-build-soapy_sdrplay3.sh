@@ -20,14 +20,14 @@ if [ "${BUILD_SOAPYSDRPLAY3:-}" == "y" ]; then
 	if [ -n "${HAVE_SOAPY}" ] ; then
 		log suc "Building SoapySDRPlay3 v0.7..."
 		cp debian/control.debian debian/control
-		dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
+		dpkg-buildpackage -b -us -uc -j"$(nproc --ignore=4)"
 	fi
 	# SoapySDR v0.8
 	HAVE_SOAPY=$(apt-cache search libsoapysdr0.8)
 	if [ -n "${HAVE_SOAPY}" ] ; then
 		log suc "Building SoapySDRPlay3 v0.8..."
 		cp debian/control.ubuntu debian/control
-		dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
+		dpkg-buildpackage -b -us -uc -j"$(nproc --ignore=4)"
 	fi
 	popd
 

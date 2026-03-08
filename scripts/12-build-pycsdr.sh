@@ -12,7 +12,7 @@ if [ "${BUILD_PYCSDR:-}" == "y" ]; then
 	log suc "Building PyCSDR..."
 	git clone -b master "$GIT_PYCSDR"
 	cd pycsdr
-	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
+	dpkg-buildpackage -b -us -uc -j"$(nproc --ignore=4)"
 	cd /
 
 	# OpenWebRX build depends on the latest PyCSDR

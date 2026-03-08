@@ -39,7 +39,7 @@ if [ "${BUILD_RADAE:-}" == "y" ]; then
 			fi
 		fi
 	fi
-	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)" -Ppkg.minimal
+	dpkg-buildpackage -b -us -uc -j"$(nproc --ignore=4)" -Ppkg.minimal
 	popd
 
 	# copy debs to the output folder

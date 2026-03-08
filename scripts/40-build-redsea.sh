@@ -20,7 +20,7 @@ if [ "${BUILD_REDSEA:-}" == "y" ]; then
 		echo '---------- oooohh, it is an ubuntu....'
 		echo "debian/redsea/usr/bin/redsea /usb/bin" > debian/install
 	fi
-	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
+	dpkg-buildpackage -b -us -uc -j"$(nproc --ignore=4)"
 	popd
 	# Not installing Redsea here since there are no further
 	# build steps depending on it

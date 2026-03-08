@@ -117,7 +117,7 @@ EOF
 		done
 	} > "${debian_dir}/${PKG_NAME}.install"
 
-	dpkg-buildpackage -us -uc -b -j"$(nproc --ignore=4)"
+	dpkg-buildpackage -b -us -uc -b -j"$(nproc --ignore=4)"
 	popd
 
 	mkdir -p "${OUTPUT_DIR}"

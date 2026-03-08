@@ -12,7 +12,7 @@ if [ "${BUILD_OWRXCONNECTOR:-}" == "y" ]; then
 	log suc "Building OWRX-Connector..."
 	git clone -b master "$GIT_OWRXCONNECTOR"
 	cd owrx_connector
-	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
+	dpkg-buildpackage -b -us -uc -j"$(nproc --ignore=4)"
 	cd /
 	# Not installing OWRX-Connectors here since there are no
 	# further build steps depending on it

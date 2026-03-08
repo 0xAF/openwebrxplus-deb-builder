@@ -5,7 +5,8 @@ set -euo pipefail
 # shellcheck disable=SC1091
 source /build.env
 
-: "${GIT_LIBACARS:=https://github.com/szpajder/libacars}"
+#: "${GIT_LIBACARS:=https://github.com/szpajder/libacars}"
+: "${GIT_LIBACARS:=https://github.com/luarvique/libacars}"
 
 if [ "${BUILD_LIBACARS:-}" == "y" ]; then
   apt install -y libxml2-dev libjansson-dev
@@ -14,7 +15,7 @@ if [ "${BUILD_LIBACARS:-}" == "y" ]; then
   git clone "$GIT_LIBACARS"
 	pushd libacars
     # git checkout 3147aa0857b6d0fb8989b27445ce46278cb4bae8
-    patch -p1 < /scripts/patches/libacars-2.2.0-4.patch
+    # patch -p1 < /scripts/patches/libacars-2.2.0-4.patch
     dpkg-buildpackage -b -rfakeroot -us -uc -j"$(nproc --ignore=4)"
 	popd
 

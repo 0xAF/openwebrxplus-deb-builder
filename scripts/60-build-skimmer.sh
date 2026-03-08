@@ -11,7 +11,7 @@ if [ "${BUILD_SKIMMER:-}" == "y" ]; then
 	log suc "Building skimmer..."
 	git clone -b main "$GIT_SKIMMER"
 	pushd csdr-skimmer
-	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
+	dpkg-buildpackage -b -us -uc -j"$(nproc --ignore=4)"
 	popd
 
 	# copy debs to the output folder

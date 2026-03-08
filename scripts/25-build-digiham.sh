@@ -13,7 +13,7 @@ if [ "${BUILD_DIGIHAM:-}" == "y" ]; then
 	git clone -b master "$GIT_DIGIHAM"
 	pushd digiham
 	sed -i 's/set(CMAKE_CXX_STANDARD 11)/set(CMAKE_CXX_STANDARD 17)/' CMakeLists.txt
-	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
+	dpkg-buildpackage -b -us -uc -j"$(nproc --ignore=4)"
 	popd
 	# PyDigiHAM build depends on the latest DigiHAM
 	sudo dpkg -i *digiham*.deb

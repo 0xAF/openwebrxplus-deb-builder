@@ -5,16 +5,15 @@ set -euo pipefail
 # shellcheck disable=SC1091
 source /build.env
 
-apt install -y adduser
-
 # set default value if not provided
 : "${GIT_CODECSERVER:=https://github.com/jketterl/codecserver.git}"
 
 if [ "${BUILD_CODECSERVER:-}" == "y" ]; then
+	apt install -y adduser
 	log suc "Building CodecServer..."
 	git clone -b master "$GIT_CODECSERVER"
 	pushd codecserver
-	dpkg-buildpackage -us -uc -j"$(nproc --ignore=4)"
+	dpkg-buildpackage -b -us -uc -j"$(nproc --ignore=4)"
 	popd
 	# Digiham depends on libcodecserver-dev
 	dpkg -i libcodecserver_*.deb codecserver_*.deb libcodecserver-dev_*.deb

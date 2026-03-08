@@ -14,8 +14,8 @@ if [ "${BUILD_RTL433:-}" == "y" ]; then
 	apt install -y doxygen pkgconf
 	git clone -b master "$GIT_RTL433"
 	pushd rtl-433
-	# dpkg-buildpackage -us -uc
-	gbp buildpackage --git-ignore-branch -us -uc
+	dpkg-buildpackage -b -us -uc
+	# gbp buildpackage --git-ignore-branch -us -uc
 	popd
 
 	# copy debs to the output folder
