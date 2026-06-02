@@ -23,6 +23,29 @@ fi
 if [ "${BUILD_ACARSDEC:-}" == 'y' ] || [ "${BUILD_DUMPHFDL:-}" == "y" ] || [ "${BUILD_DUMPVDL2:-}" == "y" ]; then
   export BUILD_LIBACARS=y
 fi
+# Check if apt has a package at (optionally) a minimum version.
+# Uses the candidate version from apt-cache policy so it works before installation.
+# Usage: apt_has_version PKG [MIN_VERSION]
+apt_has_version() {
+  local pkg="$1"
+  local min_ver="${2:-}"
+  local candidate
+  candidate=$(apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2}')
+  if [ -z "$candidate" ] || [ "$candidate" = "(none)" ]; then
+    return 1
+  fi
+  if [ -n "$min_ver" ]; then
+    dpkg --compare-versions "$candidate" ge "$min_ver"
+  fi
+}
+
+if [ "${BUILD_MESHTASTIC:-}" == "y" ]; then
+  apt_has_version python3-packaging 24.0   || export BUILD_PY_PACKAGING=y
+  apt_has_version python3-dbus-fast        || export BUILD_PY_DBUS_FAST=y
+  apt_has_version python3-dotmap           || export BUILD_PY_DOTMAP=y
+  apt_has_version python3-bleak 0.22.3     || export BUILD_PY_BLEAK=y
+  apt_has_version python3-protobuf 4.21.12 || export BUILD_PY_PROTOBUF=y
+fi
 
 colorify() {
   [[ $2 ]] && {
@@ -49,6 +72,12 @@ colorify "${BUILD_PYDIGIHAM:-n}" pydigiham
 colorify "${BUILD_CSDR_ETI:-n}" csdr-eti
 colorify "${BUILD_PYCSDR_ETI:-n}" pycsdr-eti
 colorify "${BUILD_JS8PY:-n}" js8py
+colorify "${BUILD_PY_PACKAGING:-n}" python3-packaging
+colorify "${BUILD_PY_PROTOBUF:-n}" python3-protobuf
+colorify "${BUILD_PY_DBUS_FAST:-n}" python3-dbus-fast
+colorify "${BUILD_PY_DOTMAP:-n}" python3-dotmap
+colorify "${BUILD_PY_BLEAK:-n}" python3-bleak
+colorify "${BUILD_MESHTASTIC:-n}" meshtastic
 colorify "${BUILD_REDSEA:-n}" redsea
 colorify "${BUILD_SOAPYSDRPLAY3:-n}" SoapySDRPlay3
 colorify "${BUILD_LIBACARS:-n}" LibAcars
