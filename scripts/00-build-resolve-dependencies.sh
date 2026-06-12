@@ -95,6 +95,7 @@ colorify "${BUILD_RTL433:-n}" rtl433
 colorify "${BUILD_RADAE:-n}" radae
 colorify "${BUILD_MULTIMON_NG:-n}" multimon-ng
 colorify "${BUILD_LORA_DXLAPRS:-n}" dxlaprs-lora
+colorify "${BUILD_TETRA_DXLAPRS:-n}" dxlaprs-tetra
 
 sleep 3
 
