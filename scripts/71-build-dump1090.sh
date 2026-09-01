@@ -19,15 +19,7 @@ if [ "${BUILD_DUMP1090:-}" == "y" ]; then
 	git clone -b debian/bullseye "$GIT_DUMP1090"
 
 	pushd dump1090-debian
-
-	if grep -q " -Wno-error=calloc-transposed-args" Makefile; then
-		:
-	elif grep -q "^DUMP1090_CFLAGS := " Makefile; then
-		sed -i '0,/^DUMP1090_CFLAGS := /s//&-Wno-error=calloc-transposed-args /' Makefile
-	else
-		log err "target line not found"
-		exit 1
-	fi
+	patch -p1 < /scripts/patches/dump1090-fa-8.2-calloc.patch
 
 	popd
 

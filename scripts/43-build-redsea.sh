@@ -14,14 +14,26 @@ if [ "${BUILD_REDSEA:-}" == "y" ]; then
 	log suc "Building Redsea..."
 	git clone -b master "$GIT_REDSEA"
 	pushd redsea
-	. /etc/os-release
-	if [[ "${UBUNTU_CODENAME:-}" == "jammy" || "${UBUNTU_CODENAME:-}" == "noble" ]]; then
-		# this is for ubuntu 22.04/24.04
-		echo '---------- oooohh, it is an ubuntu....'
-		echo "debian/redsea/usr/bin/redsea /usb/bin" > debian/install
-	fi
 	dpkg-buildpackage -b -us -uc -j"$(nproc --ignore=4)"
 	popd
+
+	redsea_debs=(./redsea_*.deb)
+	if [ ! -e "${redsea_debs[0]}" ]; then
+		log err "Redsea package was not produced"
+		exit 1
+	fi
+	for deb in "${redsea_debs[@]}"; do
+		package_contents="$(LC_ALL=C dpkg-deb --contents "$deb")"
+		if ! grep -qE ' \./usr/bin/redsea$' <<< "$package_contents"; then
+			log err "$deb does not install /usr/bin/redsea"
+			exit 1
+		fi
+		if grep -qE ' \./usb/' <<< "$package_contents"; then
+			log err "$deb contains the invalid /usb path"
+			exit 1
+		fi
+	done
+
 	# Not installing Redsea here since there are no further
 	# build steps depending on it
 	#dpkg -i *redsea*.deb
@@ -32,4 +44,3 @@ if [ "${BUILD_REDSEA:-}" == "y" ]; then
 	# clean
 	rm -rf ./*.deb redsea/
 fi
-

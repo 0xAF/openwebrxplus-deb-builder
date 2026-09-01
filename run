@@ -867,11 +867,11 @@ check-apt
 usage() {
   log war "Usage: $0 [command]"
   log war ". commands:"
-  log war "... [5[build]] - build DEB packages from settings-test.env"
+  log war "... [5[build]] - build DEB packages from settings.env"
   log war "...... [6[--plain]] - force plain merged output even inside tmux"
   log war "... [5[build-debug]] - run one container at a time with -it for debugging"
-  log war "... [5[create]] - create docker builders from settings-test.env"
-  log war "... [5[settings]] - create and/or edit settings-test.env"
+  log war "... [5[create]] - create docker builders from settings.env"
+  log war "... [5[settings]] - create and/or edit settings.env"
   log war "... [5[start-apt-cache]] - to start apt-cache docker container"
   log war "... [5[stop-apt-cache]] - to stop apt-cache docker container"
   echo

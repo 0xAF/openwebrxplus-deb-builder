@@ -6,7 +6,8 @@ set -euo pipefail
 source /build.env
 
 # set default value if not provided
-: "${GIT_DIGIHAM:=https://github.com/jketterl/digiham.git}"
+#: "${GIT_DIGIHAM:=https://github.com/jketterl/digiham.git}"
+: "${GIT_DIGIHAM:=https://github.com/luarvique/digiham}"
 
 if [ "${BUILD_DIGIHAM:-}" == "y" ]; then
 	log suc "Building DigiHAM..."

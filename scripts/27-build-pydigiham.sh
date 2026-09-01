@@ -6,7 +6,8 @@ set -euo pipefail
 source /build.env
 
 # set default value if not provided
-: "${GIT_PYDIGIHAM:=https://github.com/jketterl/pydigiham.git}"
+#: "${GIT_PYDIGIHAM:=https://github.com/jketterl/pydigiham.git}"
+: "${GIT_PYDIGIHAM:=https://github.com/luarvique/pydigiham}"
 
 if [ "${BUILD_PYDIGIHAM:-}" == "y" ]; then
 	log suc "Building PyDigiHAM..."

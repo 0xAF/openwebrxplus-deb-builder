@@ -7,10 +7,11 @@ source /build.env
 
 # set default value if not provided
 : "${GIT_CSDR:=https://github.com/luarvique/csdr.git}"
+: "${CSDR_REF:=master}"
 	
 if [ "${BUILD_CSDR:-}" == "y" ]; then
 	log suc "Building CSDR..."
-	git clone -b master "$GIT_CSDR"
+	git clone --branch "$CSDR_REF" --single-branch "$GIT_CSDR"
 	cd csdr
 	if [ "$(gcc -dumpversion)" -gt 10 ]; then
 		# fix armhf builds on gcc>=11 (bookworm)

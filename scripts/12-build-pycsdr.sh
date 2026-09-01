@@ -7,10 +7,11 @@ source /build.env
 
 # set default value if not provided
 : "${GIT_PYCSDR:=https://github.com/luarvique/pycsdr.git}"
+: "${PYCSDR_REF:=master}"
 
 if [ "${BUILD_PYCSDR:-}" == "y" ]; then
 	log suc "Building PyCSDR..."
-	git clone -b master "$GIT_PYCSDR"
+	git clone --branch "$PYCSDR_REF" --single-branch "$GIT_PYCSDR"
 	cd pycsdr
 	dpkg-buildpackage -b -us -uc -j"$(nproc --ignore=4)"
 	cd /
@@ -24,4 +25,3 @@ if [ "${BUILD_PYCSDR:-}" == "y" ]; then
 	# clean
 	rm -rf ./*.deb pycsdr/
 fi
-
