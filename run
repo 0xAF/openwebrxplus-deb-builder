@@ -464,6 +464,7 @@ check_image_arch_match() {
   local image_tag="$1"
   local requested_arch="$2"
   local expected_arch actual_arch image_ref
+  local expected_image_platform local_image_platform
   local preflight_cmd
   local timeout_seconds
   local preflight_pull
@@ -481,10 +482,27 @@ check_image_arch_match() {
   preflight_pull="${ARCH_PREFLIGHT_PULL:-y}"
 
   if [ "${preflight_pull}" != "n" ]; then
-    log inf "Ensuring image is available: ${image_ref} (linux/${requested_arch})"
-    if ! docker pull --platform "linux/${requested_arch}" "${image_ref}"; then
-      log err "Failed to pull ${image_ref} for linux/${requested_arch}"
-      return 1
+    case "${requested_arch}" in
+      amd64)
+        expected_image_platform="linux/amd64"
+        ;;
+      arm64)
+        expected_image_platform="linux/arm64"
+        ;;
+      armhf)
+        expected_image_platform="linux/arm/v7"
+        ;;
+    esac
+
+    local_image_platform="$(docker image inspect --format '{{.Os}}/{{.Architecture}}{{if .Variant}}/{{.Variant}}{{end}}' "${image_ref}" 2>/dev/null | tr -d '\r' || true)"
+    if [ "${local_image_platform}" != "${expected_image_platform}" ]; then
+      log inf "Local image unavailable for ${expected_image_platform}; pulling ${image_ref} for linux/${requested_arch}"
+      if ! docker pull --platform "linux/${requested_arch}" "${image_ref}"; then
+        log err "Failed to pull ${image_ref} for linux/${requested_arch}"
+        return 1
+      fi
+    else
+      log inf "Using local image: ${image_ref} (${local_image_platform})"
     fi
   fi
 
